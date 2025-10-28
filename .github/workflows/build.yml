@@ -23,8 +23,11 @@ jobs:
       - name: Download dependencies
         run: go mod download
 
-      - name: Build
-        run: go build -o wavetrack cmd/wavetrack/main.go
+      - name: Build main application
+        run: go build -o wavetrack ./cmd/wavetrack
+
+      - name: Build seed_history tool
+        run: go build -o seed_history ./cmd/seed_history
 
       - name: Run tests
         run: go test ./...
