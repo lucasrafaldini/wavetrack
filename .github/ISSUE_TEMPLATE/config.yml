@@ -1,0 +1,11 @@
+blank_issues_enabled: false
+contact_links:
+  - name: 📌 Roadmap do projeto
+    url: https://github.com/lucasrafaldini/wavetrack/blob/main/.wavetrack/ROADMAP.md
+    about: Consulte a visão e as versões planejadas antes de abrir uma issue
+  - name: 💬 Discussions
+    url: https://github.com/lucasrafaldini/wavetrack/discussions
+    about: Dúvidas gerais, ideias e discussões sobre o projeto
+  - name: 📚 Documentação
+    url: https://github.com/lucasrafaldini/wavetrack/blob/main/README.md
+    about: Consulte a documentação completa antes de reportar problemas

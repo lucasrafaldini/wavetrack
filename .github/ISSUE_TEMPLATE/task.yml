@@ -1,0 +1,76 @@
+name: "🛠️ Task"
+description: Tarefa técnica, refactor, docs ou infra
+labels: ["kind:task"]
+body:
+  - type: dropdown
+    id: tipo
+    attributes:
+      label: Tipo de tarefa
+      options:
+        - 📝 Documentação
+        - 🔧 Refatoração
+        - 🧪 Testes
+        - 🚀 Infraestrutura/Deploy
+        - 📦 Dependências
+        - 🔒 Segurança
+        - ⚡ Performance
+        - 🧹 Manutenção/Cleanup
+    validations:
+      required: true
+  - type: textarea
+    id: objetivo
+    attributes:
+      label: Objetivo
+      description: O que será feito e por quê?
+      placeholder: |
+        Migrar storage de JSON para SQLite para melhor performance 
+        com >500 devices e queries complexas.
+    validations:
+      required: true
+  - type: textarea
+    id: entregaveis
+    attributes:
+      label: Entregáveis
+      description: O que deve estar pronto ao final? (arquivos, endpoints, comandos)
+      placeholder: |
+        - [ ] Schema SQLite com tabelas devices, employees, events
+        - [ ] Migration script de JSON para SQLite
+        - [ ] Atualizar internal/storage para usar database/sql
+        - [ ] Testes de integração com SQLite
+        - [ ] Documentação atualizada
+      value: |
+        - [ ] 
+        - [ ] 
+        - [ ] 
+    validations:
+      required: true
+  - type: textarea
+    id: riscos
+    attributes:
+      label: Riscos e dependências
+      description: O que pode dar errado? Depende de outras issues?
+      placeholder: |
+        - Breaking change: requer migração de dados existentes
+        - Dependência: cgo para SQLite (complicar cross-compile)
+        - Alternativa: usar pure-go SQLite (github.com/mattn/go-sqlite3 vs modernc.org/sqlite)
+  - type: dropdown
+    id: prioridade
+    attributes:
+      label: Prioridade
+      options:
+        - 🔴 Alta
+        - 🟡 Média
+        - 🟢 Baixa
+  - type: input
+    id: roadmap
+    attributes:
+      label: Versão do roadmap
+      description: A que versão este item pertence? (v0.3, v0.4, v0.5, v1.0)
+      placeholder: "v0.4"
+  - type: input
+    id: estimativa
+    attributes:
+      label: Estimativa de esforço
+      description: Horas ou dias estimados
+      placeholder: "2-3 dias"
+

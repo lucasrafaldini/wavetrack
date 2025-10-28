@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WaveTrack - Dashboard de Gerenciamento</title>
+    <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>📡 WaveTrack</h1>
+            <p class="subtitle">Sistema de Monitoramento de Presença Wi-Fi</p>
+        </header>
+
+        <div class="stats">
+            <div class="stat-card">
+                <div class="stat-number" id="totalDevices">0</div>
+                <div class="stat-label">Dispositivos Detectados</div>
+                <div style="font-size: 0.75em; color: #999; margin-top: 8px; line-height: 1.3;">
+                    Todos os dispositivos já vistos pela rede
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="activeDevices">0</div>
+                <div class="stat-label">Dispositivos Ativos</div>
+                <div style="font-size: 0.75em; color: #999; margin-top: 8px; line-height: 1.3;">
+                    Vistos nos últimos 20 minutos
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="totalEmployees">0</div>
+                <div class="stat-label">Funcionários Cadastrados</div>
+                <div style="font-size: 0.75em; color: #999; margin-top: 8px; line-height: 1.3;">
+                    Total de funcionários no sistema
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-number" id="presentEmployees">0</div>
+                <div class="stat-label">Funcionários Presentes</div>
+                <div style="font-size: 0.75em; color: #999; margin-top: 8px; line-height: 1.3;">
+                    Funcionários com dispositivos ativos
+                </div>
+            </div>
+        </div>
+
+        <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 30px; border-left: 4px solid #667eea;">
+            <p style="margin: 0; color: #555; font-size: 0.9em; line-height: 1.6;">
+                <strong style="color: #667eea;">ℹ️ Sobre os dispositivos:</strong><br>
+                <span style="color: #666;">
+                    • <strong>Detectado</strong> = Já foi visto alguma vez na rede (histórico completo)<br>
+                    • <strong>Ativo</strong> = Visto nos últimos 20 minutos (pode não estar conectado, apenas próximo)<br>
+                    • <strong>Conectado</strong> = Está transmitindo dados ativamente na rede agora<br>
+                    <em style="color: #999;">Nota: Um dispositivo pode estar ativo (próximo) mas não conectado (sem usar a rede).</em>
+                </span>
+            </p>
+        </div>
+
+        <div class="main-content">
+            <div class="card">
+                <!-- Tabs de navegação -->
+                <div class="tabs">
+                    <button class="tab active" onclick="switchTab('current')">
+                        🔴 Tempo Real
+                    </button>
+                    <button class="tab" onclick="switchTab('history')">
+                        📊 Histórico (7 dias)
+                    </button>
+                    <button class="tab" onclick="switchTab('employees')">
+                        👥 Colaboradores
+                    </button>
+                </div>
+
+                <!-- Aba: Tempo Real -->
+                <div id="tab-current" class="tab-content active">
+                    <h2>🔍 Dispositivos Conectados</h2>
+                    <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap: wrap;">
+                        <label style="font-weight:600; color:#333;">Ordenar por</label>
+                        <select id="sortField" style="max-width:220px;">
+                            <option value="name">Nome do funcionário</option>
+                            <option value="arrival">Chegou às</option>
+                            <option value="duration">Tempo online</option>
+                        </select>
+                        <select id="sortDir" style="max-width:160px;">
+                            <option value="asc">Ascendente</option>
+                            <option value="desc">Descendente</option>
+                        </select>
+                        <label style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+                            <input type="checkbox" id="onlyEmployees" /> Somente funcionários
+                        </label>
+                        <button class="btn btn-success" onclick="downloadReport()" style="margin-left:10px;">
+                            📊 Relatório Hoje
+                        </button>
+                    </div>
+                    <div id="devicesTableContainer">
+                        <table id="devicesTable">
+                            <thead>
+                                <tr>
+                                    <th>Status</th>
+                                    <th>MAC Address</th>
+                                    <th>Tipo</th>
+                                    <th>Fabricante</th>
+                                    <th>Funcionário</th>
+                                    <th>Chegou às</th>
+                                    <th>Sinal / Canal</th>
+                                    <th>Tempo online</th>
+                                    <th>Último Visto</th>
+                                    <th>Ação</th>
+                                </tr>
+                            </thead>
+                            <tbody id="devicesBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Aba: Histórico -->
+                <div id="tab-history" class="tab-content">
+                    <h2>📊 Histórico de Presença - Últimos 7 Dias</h2>
+                    <div id="historyContainer"></div>
+                </div>
+
+                <!-- Aba: Colaboradores -->
+                <div id="tab-employees" class="tab-content">
+                    <h2>👥 Gerenciamento de Colaboradores</h2>
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+                        <p style="color:#666; margin:0;">Total de <strong id="employeeCount">0</strong> colaborador(es) cadastrado(s)</p>
+                        <button class="btn btn-success" onclick="openNewEmployeeModal()">
+                            ➕ Novo Colaborador
+                        </button>
+                    </div>
+                    <div id="employeesTableContainer">
+                        <table id="employeesTable">
+                            <thead>
+                                <tr>
+                                    <th>Nome</th>
+                                    <th>MAC Address</th>
+                                    <th>Departamento</th>
+                                    <th>Tipo de Dispositivo</th>
+                                    <th>Fabricante</th>
+                                    <th>Data de Cadastro</th>
+                                    <th>Ações</th>
+                                </tr>
+                            </thead>
+                            <tbody id="employeesBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal de Cadastro -->
+    <div id="associateModal" class="modal">
+        <div class="modal-content">
+            <h2 id="modalTitle">👤 Cadastrar Funcionário</h2>
+            <form id="associateForm">
+                <div class="form-group">
+                    <label>MAC Address</label>
+                    <input type="text" id="modalMAC" readonly class="mac-address">
+                </div>
+                <div class="form-group">
+                    <label>Nome do Funcionário *</label>
+                    <input type="text" id="employeeName" required placeholder="Digite o nome completo">
+                </div>
+                <div class="form-group">
+                    <label>Departamento</label>
+                    <input type="text" id="employeeDepartment" placeholder="Ex: TI, RH, Vendas">
+                </div>
+                <div class="form-group">
+                    <label>Tipo de Dispositivo</label>
+                    <select id="deviceType">
+                        <option value="">Detectado automaticamente</option>
+                        <optgroup label="Notebooks">
+                            <option value="notebook-windows">Notebook Windows</option>
+                            <option value="notebook-mac">Notebook Mac</option>
+                            <option value="notebook-linux">Notebook Linux</option>
+                        </optgroup>
+                        <optgroup label="Smartphones">
+                            <option value="iphone-17">iPhone 17</option>
+                            <option value="iphone-16">iPhone 16</option>
+                            <option value="iphone-15">iPhone 15</option>
+                            <option value="iphone-14">iPhone 14</option>
+                            <option value="iphone-13">iPhone 13</option>
+                            <option value="iphone-12">iPhone 12</option>
+                            <option value="samsung-s24">Samsung Galaxy S24</option>
+                            <option value="samsung-s23">Samsung Galaxy S23</option>
+                            <option value="samsung-a54">Samsung Galaxy A54</option>
+                            <option value="xiaomi-13">Xiaomi 13</option>
+                            <option value="xiaomi-redmi">Xiaomi Redmi Note</option>
+                            <option value="motorola-edge">Motorola Edge</option>
+                            <option value="motorola-moto-g">Moto G</option>
+                        </optgroup>
+                        <optgroup label="Tablets">
+                            <option value="ipad-pro">iPad Pro</option>
+                            <option value="ipad-air">iPad Air</option>
+                            <option value="ipad">iPad</option>
+                            <option value="samsung-tab-s9">Samsung Galaxy Tab S9</option>
+                            <option value="samsung-tab-a">Samsung Galaxy Tab A</option>
+                        </optgroup>
+                    </select>
+                </div>
+                <div class="form-group">
+                    <label>Fabricante</label>
+                    <select id="deviceVendor">
+                        <option value="">Detectado automaticamente</option>
+                        <option value="Apple">Apple</option>
+                        <option value="Samsung">Samsung</option>
+                        <option value="Xiaomi">Xiaomi</option>
+                        <option value="Motorola">Motorola</option>
+                        <option value="Dell">Dell</option>
+                        <option value="HP">HP</option>
+                        <option value="Lenovo">Lenovo</option>
+                        <option value="Asus">Asus</option>
+                        <option value="Acer">Acer</option>
+                        <option value="LG">LG</option>
+                        <option value="Huawei">Huawei</option>
+                        <option value="OnePlus">OnePlus</option>
+                        <option value="Google">Google</option>
+                        <option value="Microsoft">Microsoft</option>
+                        <option value="Sony">Sony</option>
+                    </select>
+                </div>
+                <div style="display: flex; gap: 10px; margin-top: 30px;">
+                    <button type="submit" class="btn btn-success" style="flex: 1;">Salvar</button>
+                    <button type="button" class="btn btn-primary" onclick="closeModal()" style="flex: 1;">Cancelar</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <button class="refresh-btn" onclick="loadData()" title="Atualizar dados">
+        ↻
+    </button>
+
+    <script src="js/app.js"></script>
+</body>
+</html>

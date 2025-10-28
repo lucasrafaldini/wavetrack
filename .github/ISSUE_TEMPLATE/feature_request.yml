@@ -1,0 +1,75 @@
+name: "✨ Feature Request"
+description: Proponha uma nova funcionalidade ou melhoria
+labels: ["kind:feature"]
+body:
+  - type: input
+    id: contexto
+    attributes:
+      label: Contexto e problema
+      description: Qual é a necessidade do usuário e o problema a resolver?
+      placeholder: "Como gerente de RH, preciso gerar relatórios mensais de presença para..."
+    validations:
+      required: true
+  - type: textarea
+    id: proposta
+    attributes:
+      label: Proposta de solução
+      description: Descreva a solução sugerida (UI/API/CLI, fluxos, exemplos)
+      placeholder: |
+        Adicionar endpoint `/api/reports/monthly` que retorne JSON com:
+        - Total de dias úteis
+        - Presença por funcionário
+        - Taxa de ocupação do escritório
+        
+        Na dashboard, botão "Gerar Relatório" que abre modal com seleção de mês.
+    validations:
+      required: true
+  - type: textarea
+    id: impacto
+    attributes:
+      label: Impacto e valor
+      description: Qual valor entrega? Há métricas ou critérios de sucesso?
+      placeholder: |
+        Valor: Economiza 2h/semana de trabalho manual com planilhas
+        Critério de sucesso: Gerar relatório em <5s, exportar como CSV/PDF
+  - type: dropdown
+    id: componente
+    attributes:
+      label: Componente afetado
+      description: Qual parte do sistema seria modificada?
+      options:
+        - Scanner (captura de pacotes)
+        - Tracker (lógica de presença)
+        - API (novos endpoints)
+        - Frontend (dashboard)
+        - Storage (modelo de dados)
+        - CLI (novos comandos)
+        - Relatórios (nova feature)
+        - Integração (sistemas externos)
+        - Outro
+  - type: dropdown
+    id: prioridade
+    attributes:
+      label: Prioridade sugerida
+      options:
+        - 🔴 Alta (bloqueador para produção)
+        - 🟡 Média (melhoria importante)
+        - 🟢 Baixa (nice to have)
+  - type: checkboxes
+    id: escopo
+    attributes:
+      label: Escopo inicial
+      options:
+        - label: Defini requisitos mínimos (MVP)
+          required: false
+        - label: Listei riscos e dependências
+          required: false
+        - label: Considerei impacto em privacidade/GDPR
+          required: false
+  - type: input
+    id: roadmap
+    attributes:
+      label: Versão do roadmap
+      description: A que versão este item pertence? (v0.3, v0.4, v0.5, v1.0)
+      placeholder: "v0.4"
+
