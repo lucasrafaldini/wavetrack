@@ -1,0 +1,85 @@
+name: "🐞 Bug Report"
+description: Relate um problema para corrigirmos
+labels: ["kind:bug"]
+body:
+  - type: input
+    id: versao
+    attributes:
+      label: Versão/commit
+      description: Informe a versão do WaveTrack ou o SHA do commit
+      placeholder: "v0.2.0 ou commit abc123"
+  - type: textarea
+    id: descricao
+    attributes:
+      label: Descrição do bug
+      description: O que aconteceu? O que você esperava que acontecesse?
+      placeholder: "O scanner não detecta dispositivos mesmo com a interface em modo monitor..."
+    validations:
+      required: true
+  - type: textarea
+    id: reproducao
+    attributes:
+      label: Passos para reproduzir
+      description: Liste passos claros (com dados de exemplo se possível)
+      placeholder: |
+        1. Configure a interface wlan0 em modo monitor
+        2. Execute `sudo ./wavetrack`
+        3. Nenhum dispositivo aparece na dashboard
+      value: |
+        1. 
+        2. 
+        3. 
+    validations:
+      required: true
+  - type: textarea
+    id: logs
+    attributes:
+      label: Logs/erros
+      description: Cole aqui mensagens relevantes de logs/erro.log ou terminal
+      placeholder: |
+        2025/01/15 10:30:00 [ERROR] Failed to open device: no suitable device found
+      render: shell
+  - type: textarea
+    id: ambiente
+    attributes:
+      label: Ambiente
+      description: Sistema operacional, hardware wireless, versão do Go
+      placeholder: |
+        - OS: Ubuntu 22.04
+        - Go version: 1.21.5
+        - Wi-Fi adapter: Intel AX200 (802.11ax)
+        - libpcap version: 1.10.1
+      value: |
+        - OS: 
+        - Go version: 
+        - Wi-Fi adapter: 
+        - libpcap version: 
+    validations:
+      required: true
+  - type: dropdown
+    id: componente
+    attributes:
+      label: Componente afetado
+      description: Qual parte do sistema tem o problema?
+      options:
+        - Scanner (captura de pacotes)
+        - Tracker (detecção de presença)
+        - API (endpoints REST)
+        - Frontend (dashboard web)
+        - Storage (persistência JSON)
+        - Logger (sistema de logs)
+        - Config (configuração YAML)
+        - Não sei / Outro
+  - type: checkboxes
+    id: escopo
+    attributes:
+      label: Checklist
+      options:
+        - label: Verifiquei no branch main
+          required: false
+        - label: Procurei Issues existentes
+          required: true
+        - label: Testei com `sudo` (se problema de captura)
+          required: false
+        - label: Verifiquei se a interface suporta modo monitor
+          required: false

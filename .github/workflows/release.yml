@@ -1,0 +1,85 @@
+name: release
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.22'
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libpcap-dev gcc-mingw-w64
+
+      - name: Build Linux binary
+        run: |
+          GOOS=linux GOARCH=amd64 go build \
+            -ldflags="-s -w" \
+            -o dist/wavetrack-linux-amd64 \
+            cmd/wavetrack/main.go
+
+      - name: Build macOS binary (arm64)
+        run: |
+          GOOS=darwin GOARCH=arm64 go build \
+            -ldflags="-s -w" \
+            -o dist/wavetrack-darwin-arm64 \
+            cmd/wavetrack/main.go
+
+      - name: Build macOS binary (amd64)
+        run: |
+          GOOS=darwin GOARCH=amd64 go build \
+            -ldflags="-s -w" \
+            -o dist/wavetrack-darwin-amd64 \
+            cmd/wavetrack/main.go
+
+      - name: Build Windows binary
+        run: |
+          GOOS=windows GOARCH=amd64 CGO_ENABLED=1 CC=x86_64-w64-mingw32-gcc \
+            go build \
+            -ldflags="-s -w" \
+            -o dist/wavetrack-windows-amd64.exe \
+            cmd/wavetrack/main.go
+
+      - name: Create checksums
+        run: |
+          cd dist
+          sha256sum * > checksums.txt
+
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/*
+          body: |
+            ## WaveTrack ${{ github.ref_name }}
+            
+            ### Downloads
+            - **Linux (amd64)**: `wavetrack-linux-amd64`
+            - **macOS (Apple Silicon)**: `wavetrack-darwin-arm64`
+            - **macOS (Intel)**: `wavetrack-darwin-amd64`
+            - **Windows (amd64)**: `wavetrack-windows-amd64.exe`
+            
+            ### Installation
+            ```bash
+            # Linux/macOS
+            chmod +x wavetrack-*
+            sudo mv wavetrack-* /usr/local/bin/wavetrack
+            
+            # Grant network capabilities (Linux)
+            sudo setcap cap_net_raw,cap_net_admin=eip /usr/local/bin/wavetrack
+            ```
+            
+            ### Verify checksums
+            ```bash
+            sha256sum -c checksums.txt
+            ```
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

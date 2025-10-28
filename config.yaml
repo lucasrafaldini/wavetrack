@@ -1,0 +1,22 @@
+# Configuração do WaveTrack
+
+# Interface de rede para monitoramento
+# macOS: en0 (geralmente), Linux: wlan0
+network:
+  interface: "en0"
+  channel: 6
+  scan_interval: 10  # segundos
+
+# Configuração de logs
+logging:
+  log_dir: "./logs"
+  log_level: "info"
+
+# Detecção de presença
+presence:
+  timeout_minutes: 20  # Tempo de inatividade antes de marcar offline (mín. 20 minutos)
+  signal_threshold: -75  # dBm - sinal mínimo para considerar presença (0 = ignora)
+
+# Nota: Funcionários são cadastrados via interface web (http://localhost:8080)
+# e armazenados no banco de dados SQLite (data/wavetrack.db)
+
