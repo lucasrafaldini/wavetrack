@@ -207,7 +207,7 @@ function rowHTML(device) {
             </td>
             <td class="mac-address">${device.mac_address}</td>
             <td>
-                ${getDeviceTypeIcon(device.type)} ${getDeviceTypeName(device.type)}
+                ${renderDeviceType(device)}
             </td>
             <td style="font-size: 0.9em; color: #666;">
                 ${device.vendor || 'Desconhecido'}
@@ -258,10 +258,17 @@ function rowHTML(device) {
 }
 
 function getDeviceTypeIcon(type) {
-    if (type.includes('notebook') || type.includes('laptop')) return '💻';
+    // Tipos específicos
+    if (type.includes('notebook') || type.includes('laptop') || type === 'laptop') return '💻';
     if (type.includes('iphone') || type.includes('samsung') || type.includes('xiaomi') || 
         type.includes('motorola') || type === 'smartphone') return '📱';
-    if (type.includes('ipad') || type.includes('tab') || type === 'tablet') return '📱';
+    if (type.includes('ipad') || type.includes('tab') || type === 'tablet') return '�';
+    if (type === 'router' || type.includes('router')) return '🌐';
+    if (type === 'iot' || type.includes('iot')) return '🔗';
+    if (type === 'smarttv' || type.includes('smarttv')) return '📺';
+    if (type === 'console' || type.includes('console')) return '🎮';
+    if (type === 'incerto' || type === 'uncertain') return '❔';
+    if (type === 'unknown' || type === 'desconhecido') return '❓';
     return '❓';
 }
 
@@ -296,8 +303,13 @@ function getDeviceTypeName(type) {
     // Fallback para tipos padrão
     const names = {
         'laptop': 'Laptop',
-        'smartphone': 'Smartphone',
+        'smartphone': 'Smartphone', 
         'tablet': 'Tablet',
+        'router': 'Roteador',
+        'iot': 'Dispositivo IoT',
+        'smarttv': 'Smart TV',
+        'console': 'Console',
+        'incerto': 'Incerto',
         'unknown': 'Desconhecido'
     };
     return names[type] || type || 'Desconhecido';
@@ -598,3 +610,28 @@ document.getElementById('associateForm').addEventListener('submit', async (e) =>
         alert('Erro ao salvar colaborador');
     }
 });
+
+// Renderiza o tipo de dispositivo com tooltip se ambíguo
+function renderDeviceType(device) {
+    const icon = getDeviceTypeIcon(device.type);
+    const typeName = getDeviceTypeName(device.type);
+    
+    // Se o dispositivo é ambíguo, mostra tooltip com tipos possíveis
+    if (device.is_ambiguous && device.possible_types && device.possible_types.length > 0) {
+        const possibleTypesText = device.possible_types.map(type => {
+            const emoji = getDeviceTypeIcon(type);
+            const name = getDeviceTypeName(type);
+            return `${emoji} ${name}`;
+        }).join(', ');
+        
+        return `
+            <span class="device-type-ambiguous" title="Tipo incerto. Pode ser: ${possibleTypesText}">
+                ${icon} ${typeName}
+                <span class="ambiguous-indicator">❔</span>
+            </span>
+        `;
+    }
+    
+    // Dispositivo com tipo definido
+    return `${icon} ${typeName}`;
+}
