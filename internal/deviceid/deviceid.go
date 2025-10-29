@@ -5,6 +5,8 @@ import (
 	"log"
 	"strings"
 	"sync"
+
+	"github.com/lucasrafaldini/ouija"
 )
 
 // VendorInfo contém informações sobre o fabricante
@@ -25,14 +27,16 @@ var vendorCache = &VendorCache{
 	cache: make(map[string]VendorInfo),
 }
 
-// init inicializa o sistema de identificação local
+// init inicializa o sistema de identificação com OUIja
 func init() {
-	log.Printf("✅ Sistema de identificação local inicializado")
+	log.Printf("✅ Sistema de identificação inicializado com OUIja (base IEEE oficial)")
+	log.Printf("🌐 OUIja: Biblioteca de identificação de fabricantes via MAC address")
+	log.Printf("📋 Fallback: Base de dados local para casos offline")
 }
 
-// ouiDatabase contém prefixos MAC (OUI) mais comuns - usado como fallback expandido
-// TODO v2.0: Substituir por biblioteca própria para consulta dinâmica de MAC addresses
-// A base hardcoded será substituída por sistema de carregamento automático do IEEE OUI
+// ouiDatabase contém prefixos MAC (OUI) mais comuns - usado como fallback final
+// NOTA: Agora usando OUIja como método principal - esta base serve apenas como fallback
+// quando a biblioteca OUIja não conseguir identificar o dispositivo (casos offline)
 var ouiDatabase = map[string]VendorInfo{
 	// Apple - dispositivos principais
 	"00:03:93": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
@@ -190,6 +194,22 @@ func lookupVendorLocal(mac string) (VendorInfo, error) {
 	}
 
 	return VendorInfo{}, fmt.Errorf("vendor não encontrado na base local")
+}
+
+// lookupVendorOUIja consulta vendor usando a biblioteca OUIja
+// Esta é a nova implementação que substitui a base de dados hardcoded
+func lookupVendorOUIja(mac string) (VendorInfo, error) {
+	// Utiliza a biblioteca OUIja para buscar o fabricante
+	vendor, err := ouija.GetVendor(mac)
+	if err != nil {
+		return VendorInfo{}, fmt.Errorf("vendor não encontrado via OUIja: %v", err)
+	}
+
+	// Aplica a lógica de inferência de tipo de dispositivo
+	deviceInfo := inferDeviceType(vendor)
+	deviceInfo.Name = vendor // Garante que o nome do fabricante seja mantido
+
+	return deviceInfo, nil
 }
 
 // inferDeviceType determina o tipo de dispositivo baseado no fabricante
@@ -563,18 +583,29 @@ func IdentifyDeviceDetailed(mac string) VendorInfo {
 	}
 	vendorCache.mu.RUnlock()
 
-	// 2. Tenta biblioteca OUI local
+	// 2. Tenta biblioteca OUIja (método principal)
+	if info, err := lookupVendorOUIja(mac); err == nil {
+		vendorCache.mu.Lock()
+		vendorCache.cache[oui] = info
+		vendorCache.mu.Unlock()
+
+		log.Printf("🌐 OUIja: %s [%s] (base IEEE oficial)",
+			mac, FormatDeviceInfoWithTooltip(info))
+		return info
+	}
+
+	// 3. Fallback: Tenta biblioteca OUI local
 	if info, err := lookupVendorLocal(mac); err == nil {
 		vendorCache.mu.Lock()
 		vendorCache.cache[oui] = info
 		vendorCache.mu.Unlock()
 
-		log.Printf("📋 LOCAL: %s [%s] (base OUI IEEE)",
+		log.Printf("📋 LOCAL: %s [%s] (base OUI IEEE backup)",
 			mac, FormatDeviceInfoWithTooltip(info))
 		return info
 	}
 
-	// 3. Fallback para base local (OUIs mais comuns)
+	// 4. Fallback para base local (OUIs mais comuns)
 	if baseInfo, ok := ouiDatabase[oui]; ok {
 		// Aplica a nova lógica de inferência à base local também
 		detailedInfo := inferDeviceType(baseInfo.Name)
@@ -596,4 +627,111 @@ func IdentifyDeviceDetailed(mac string) VendorInfo {
 	vendorCache.mu.Unlock()
 
 	return unknown
+}
+
+// GetDetailedVendorInfo retorna informações detalhadas usando OUIja
+// Inclui informações adicionais como MAC normalizado
+func GetDetailedVendorInfo(mac string) (*VendorDetailedInfo, error) {
+	// Busca informações detalhadas via OUIja
+	result, err := ouija.LookupVendor(mac)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao buscar informações detalhadas: %v", err)
+	}
+
+	// Aplica a lógica de inferência de tipo
+	deviceInfo := inferDeviceType(result.Vendor)
+
+	// Extrai OUI do MAC address
+	parts := strings.Split(strings.ToLower(result.MAC), ":")
+	oui := ""
+	if len(parts) >= 3 {
+		oui = strings.Join(parts[:3], ":")
+	}
+
+	detailedInfo := &VendorDetailedInfo{
+		MAC:           result.MAC,
+		Vendor:        result.Vendor,
+		OUI:           oui,
+		DeviceType:    deviceInfo.DeviceType,
+		IsAmbiguous:   deviceInfo.IsAmbiguous,
+		PossibleTypes: deviceInfo.PossibleTypes,
+	}
+
+	return detailedInfo, nil
+}
+
+// SearchDevicesByVendor busca dispositivos por fabricante usando OUIja
+func SearchDevicesByVendor(vendorName string) ([]string, error) {
+	macs, err := ouija.GetMACsForVendor(vendorName)
+	if err != nil {
+		return nil, fmt.Errorf("erro ao buscar MACs para vendor %s: %v", vendorName, err)
+	}
+	return macs, nil
+}
+
+// SearchVendorsByPattern busca fabricantes por padrão usando OUIja
+func SearchVendorsByPattern(pattern string) ([]*VendorStats, error) {
+	vendors := ouija.SearchVendors(pattern)
+
+	stats := make([]*VendorStats, len(vendors))
+	for i, vendor := range vendors {
+		stats[i] = &VendorStats{
+			Vendor: vendor.Vendor,
+			Count:  vendor.Count,
+		}
+	}
+
+	return stats, nil
+}
+
+// GetTopVendors retorna os principais fabricantes por número de OUIs
+func GetTopVendors(limit int) []*VendorStats {
+	vendors := ouija.GetTopVendors(limit)
+
+	stats := make([]*VendorStats, len(vendors))
+	for i, vendor := range vendors {
+		stats[i] = &VendorStats{
+			Vendor: vendor.Vendor,
+			Count:  vendor.Count,
+		}
+	}
+
+	return stats
+}
+
+// GetDatabaseStats retorna estatísticas da base de dados OUI
+func GetDatabaseStats() (*DatabaseStats, error) {
+	size, err := ouija.GetDatabaseInfo()
+	if err != nil {
+		return nil, fmt.Errorf("erro ao obter informações da base de dados: %v", err)
+	}
+
+	return &DatabaseStats{
+		TotalOUIs:  size,
+		Source:     "Wireshark/IEEE Official Database",
+		LastUpdate: "Auto-updated via OUIja",
+	}, nil
+}
+
+// VendorDetailedInfo contém informações detalhadas sobre um vendor
+type VendorDetailedInfo struct {
+	MAC           string   `json:"mac"`
+	Vendor        string   `json:"vendor"`
+	OUI           string   `json:"oui"`
+	DeviceType    string   `json:"device_type"`
+	IsAmbiguous   bool     `json:"is_ambiguous"`
+	PossibleTypes []string `json:"possible_types"`
+}
+
+// VendorStats contém estatísticas sobre um fabricante
+type VendorStats struct {
+	Vendor string `json:"vendor"`
+	Count  int    `json:"count"`
+}
+
+// DatabaseStats contém estatísticas da base de dados
+type DatabaseStats struct {
+	TotalOUIs  int    `json:"total_ouis"`
+	Source     string `json:"source"`
+	LastUpdate string `json:"last_update"`
 }
