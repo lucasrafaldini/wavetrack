@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"path/filepath"
 	"time"
@@ -174,9 +175,16 @@ func (s *Storage) GetOnlineDurationToday(macAddress string, now time.Time) (time
 
 // SaveDevice salva ou atualiza um dispositivo
 func (s *Storage) SaveDevice(device *models.Device) error {
+	// Converte PossibleTypes para JSON
+	var possibleTypesJSON string
+	if len(device.PossibleTypes) > 0 {
+		bytes, _ := json.Marshal(device.PossibleTypes)
+		possibleTypesJSON = string(bytes)
+	}
+
 	query := `
-		INSERT INTO devices (mac_address, vendor, type, first_seen, last_seen, signal_strength, frequency, channel, is_active)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO devices (mac_address, vendor, type, first_seen, last_seen, signal_strength, frequency, channel, is_active, is_ambiguous, possible_types)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(mac_address) DO UPDATE SET
 			vendor = excluded.vendor,
 			type = excluded.type,
@@ -184,7 +192,9 @@ func (s *Storage) SaveDevice(device *models.Device) error {
 			signal_strength = excluded.signal_strength,
 			frequency = excluded.frequency,
 			channel = excluded.channel,
-			is_active = excluded.is_active
+			is_active = excluded.is_active,
+			is_ambiguous = excluded.is_ambiguous,
+			possible_types = excluded.possible_types
 	`
 
 	_, err := s.db.Exec(query,
@@ -197,6 +207,8 @@ func (s *Storage) SaveDevice(device *models.Device) error {
 		device.Frequency,
 		device.Channel,
 		device.IsActive,
+		device.IsAmbiguous,
+		possibleTypesJSON,
 	)
 
 	return err
@@ -236,7 +248,7 @@ func (s *Storage) GetDevice(macAddress string) (*models.Device, error) {
 // GetAllDevices retorna todos os dispositivos
 func (s *Storage) GetAllDevices() ([]models.Device, error) {
 	query := `
-		SELECT mac_address, vendor, type, first_seen, last_seen, signal_strength, frequency, channel, is_active
+		SELECT mac_address, vendor, type, first_seen, last_seen, signal_strength, frequency, channel, is_active, is_ambiguous, possible_types
 		FROM devices
 		ORDER BY last_seen DESC
 	`
@@ -250,6 +262,8 @@ func (s *Storage) GetAllDevices() ([]models.Device, error) {
 	var devices []models.Device
 	for rows.Next() {
 		var device models.Device
+		var possibleTypesJSON sql.NullString
+
 		err := rows.Scan(
 			&device.MACAddress,
 			&device.Vendor,
@@ -260,10 +274,18 @@ func (s *Storage) GetAllDevices() ([]models.Device, error) {
 			&device.Frequency,
 			&device.Channel,
 			&device.IsActive,
+			&device.IsAmbiguous,
+			&possibleTypesJSON,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		// Deserializa PossibleTypes do JSON
+		if possibleTypesJSON.Valid && possibleTypesJSON.String != "" {
+			json.Unmarshal([]byte(possibleTypesJSON.String), &device.PossibleTypes)
+		}
+
 		devices = append(devices, device)
 	}
 
@@ -890,4 +912,78 @@ func (s *Storage) getOnlineDurationForDate(macAddress string, startOfDay, endOfD
 	}
 
 	return totalDuration, nil
+}
+
+// CleanupUnregisteredDevices remove dispositivos não cadastrados inativos há mais de X dias
+func (s *Storage) CleanupUnregisteredDevices(daysOld int) (int, error) {
+	// Remove dispositivos que:
+	// 1. Não estão na tabela employees (não cadastrados)
+	// 2. Estão inativos há mais de X dias
+	// 3. Não estão ativos no momento
+	query := `
+	DELETE FROM devices 
+	WHERE mac_address NOT IN (SELECT mac_address FROM employees)
+	  AND is_active = 0
+	  AND last_seen < datetime('now', '-' || ? || ' days')
+	`
+
+	result, err := s.db.Exec(query, daysOld)
+	if err != nil {
+		return 0, fmt.Errorf("erro ao limpar dispositivos não cadastrados: %v", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("erro ao obter dispositivos removidos: %v", err)
+	}
+
+	return int(affected), nil
+}
+
+// CleanupOldEvents remove eventos antigos (mantém apenas os últimos X dias)
+func (s *Storage) CleanupOldEvents(daysToKeep int) (int, error) {
+	// Remove apenas eventos de unknown_device antigos
+	// Mantém eventos de funcionários cadastrados
+	query := `
+	DELETE FROM events 
+	WHERE event_type = 'unknown_device'
+	  AND timestamp < datetime('now', '-' || ? || ' days')
+	  AND mac_address NOT IN (SELECT mac_address FROM employees)
+	`
+
+	result, err := s.db.Exec(query, daysToKeep)
+	if err != nil {
+		return 0, fmt.Errorf("erro ao limpar eventos antigos: %v", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("erro ao obter eventos removidos: %v", err)
+	}
+
+	return int(affected), nil
+}
+
+// GetUnregisteredDevicesCount retorna a quantidade de dispositivos não cadastrados
+func (s *Storage) GetUnregisteredDevicesCount() (total, inactive int, err error) {
+	// Total de dispositivos não cadastrados
+	err = s.db.QueryRow(`
+		SELECT COUNT(*) FROM devices 
+		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
+	`).Scan(&total)
+	if err != nil {
+		return 0, 0, fmt.Errorf("erro ao contar dispositivos não cadastrados: %v", err)
+	}
+
+	// Dispositivos não cadastrados inativos
+	err = s.db.QueryRow(`
+		SELECT COUNT(*) FROM devices 
+		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
+		  AND is_active = 0
+	`).Scan(&inactive)
+	if err != nil {
+		return 0, 0, fmt.Errorf("erro ao contar dispositivos inativos: %v", err)
+	}
+
+	return total, inactive, nil
 }

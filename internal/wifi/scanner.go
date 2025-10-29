@@ -152,6 +152,7 @@ func (s *Scanner) processPacket(packet gopacket.Packet) {
 	} else {
 		// Identifica vendor e tipo do dispositivo
 		vendor, deviceType := deviceid.IdentifyDevice(macAddr)
+		deviceInfo := deviceid.IdentifyDeviceDetailed(macAddr)
 
 		device := &models.Device{
 			MACAddress:     macAddr,
@@ -163,15 +164,17 @@ func (s *Scanner) processPacket(packet gopacket.Packet) {
 			FirstSeen:      now,
 			LastSeen:       now,
 			IsActive:       true,
+			IsAmbiguous:    deviceInfo.IsAmbiguous,
+			PossibleTypes:  deviceInfo.PossibleTypes,
 		}
 		s.devices[macAddr] = device
 		s.deviceChan <- device
 
 		if s.monitorMode {
-			log.Printf("Novo dispositivo detectado: %s [%s - %s] | %d dBm | %d MHz (Canal %d)",
-				macAddr, vendor, deviceType, signal, frequency, channel)
+			log.Printf("Novo dispositivo detectado: %s [%s] | %d dBm | %d MHz (Canal %d)",
+				macAddr, deviceid.FormatDeviceInfoWithTooltip(deviceInfo), signal, frequency, channel)
 		} else {
-			log.Printf("Novo dispositivo detectado: %s [%s - %s]", macAddr, vendor, deviceType)
+			log.Printf("Novo dispositivo detectado: %s [%s]", macAddr, deviceid.FormatDeviceInfoWithTooltip(deviceInfo))
 		}
 	}
 }

@@ -12,7 +12,9 @@ type Device struct {
 	Channel        int       `json:"channel"`         // Canal Wi-Fi (0 = não disponível)
 	FirstSeen      time.Time `json:"first_seen"`
 	LastSeen       time.Time `json:"last_seen"`
-	IsActive       bool      `json:"is_active"` // true se visto recentemente
+	IsActive       bool      `json:"is_active"`      // true se visto recentemente
+	IsAmbiguous    bool      `json:"is_ambiguous"`   // true se o fabricante faz múltiplos tipos
+	PossibleTypes  []string  `json:"possible_types"` // tipos possíveis quando ambíguo
 }
 
 // Employee representa um funcionário cadastrado no sistema

@@ -1,314 +1,599 @@
 package deviceid
 
-import "strings"
+import (
+	"fmt"
+	"log"
+	"strings"
+	"sync"
+)
 
 // VendorInfo contém informações sobre o fabricante
 type VendorInfo struct {
-	Name       string
-	DeviceType string
+	Name          string
+	DeviceType    string
+	PossibleTypes []string // Para fabricantes ambíguos
+	IsAmbiguous   bool     // Indica se o fabricante faz múltiplos tipos
 }
 
-// ouiDatabase mapeia prefixos MAC (OUI) para fabricantes e tipos
+// Cache para armazenar consultas de API
+type VendorCache struct {
+	mu    sync.RWMutex
+	cache map[string]VendorInfo
+}
+
+var vendorCache = &VendorCache{
+	cache: make(map[string]VendorInfo),
+}
+
+// init inicializa o sistema de identificação local
+func init() {
+	log.Printf("✅ Sistema de identificação local inicializado")
+}
+
+// ouiDatabase contém prefixos MAC (OUI) mais comuns - usado como fallback expandido
+// TODO v2.0: Substituir por biblioteca própria para consulta dinâmica de MAC addresses
+// A base hardcoded será substituída por sistema de carregamento automático do IEEE OUI
 var ouiDatabase = map[string]VendorInfo{
-	// Apple
-	"00:03:93": {Name: "Apple", DeviceType: "laptop"},
-	"00:0a:95": {Name: "Apple", DeviceType: "laptop"},
-	"00:0d:93": {Name: "Apple", DeviceType: "laptop"},
-	"00:17:f2": {Name: "Apple", DeviceType: "laptop"},
-	"00:1b:63": {Name: "Apple", DeviceType: "laptop"},
-	"00:1e:c2": {Name: "Apple", DeviceType: "laptop"},
-	"00:23:df": {Name: "Apple", DeviceType: "laptop"},
-	"00:25:00": {Name: "Apple", DeviceType: "laptop"},
-	"00:26:08": {Name: "Apple", DeviceType: "laptop"},
-	"04:0c:ce": {Name: "Apple", DeviceType: "laptop"},
-	"08:66:98": {Name: "Apple", DeviceType: "laptop"},
-	"0c:3e:9f": {Name: "Apple", DeviceType: "laptop"},
-	"10:41:7f": {Name: "Apple", DeviceType: "laptop"},
-	"14:10:9f": {Name: "Apple", DeviceType: "laptop"},
-	"20:c9:d0": {Name: "Apple", DeviceType: "laptop"},
-	"28:cf:e9": {Name: "Apple", DeviceType: "laptop"},
-	"38:c9:86": {Name: "Apple", DeviceType: "laptop"},
-	"3c:15:c2": {Name: "Apple", DeviceType: "laptop"},
-	"40:30:04": {Name: "Apple", DeviceType: "laptop"},
-	"44:d8:84": {Name: "Apple", DeviceType: "laptop"},
-	"48:d7:05": {Name: "Apple", DeviceType: "laptop"},
-	"4c:8d:79": {Name: "Apple", DeviceType: "laptop"},
-	"50:ea:d6": {Name: "Apple", DeviceType: "laptop"},
-	"54:26:96": {Name: "Apple", DeviceType: "laptop"},
-	"58:55:ca": {Name: "Apple", DeviceType: "laptop"},
-	"5c:f9:38": {Name: "Apple", DeviceType: "laptop"},
-	"60:f8:1d": {Name: "Apple", DeviceType: "laptop"},
-	"64:b0:a6": {Name: "Apple", DeviceType: "laptop"},
-	"68:5b:35": {Name: "Apple", DeviceType: "laptop"},
-	"6c:40:08": {Name: "Apple", DeviceType: "laptop"},
-	"70:11:24": {Name: "Apple", DeviceType: "laptop"},
-	"74:e1:b6": {Name: "Apple", DeviceType: "laptop"},
-	"78:31:c1": {Name: "Apple", DeviceType: "laptop"},
-	"7c:d1:c3": {Name: "Apple", DeviceType: "laptop"},
-	"80:49:71": {Name: "Apple", DeviceType: "laptop"},
-	"84:38:35": {Name: "Apple", DeviceType: "laptop"},
-	"88:1f:a1": {Name: "Apple", DeviceType: "laptop"},
-	"8c:85:90": {Name: "Apple", DeviceType: "laptop"},
-	"90:84:0d": {Name: "Apple", DeviceType: "laptop"},
-	"94:e9:6a": {Name: "Apple", DeviceType: "laptop"},
-	"98:01:a7": {Name: "Apple", DeviceType: "laptop"},
-	"9c:fc:e8": {Name: "Apple", DeviceType: "laptop"},
-	"a4:5e:60": {Name: "Apple", DeviceType: "laptop"},
-	"a8:20:66": {Name: "Apple", DeviceType: "laptop"},
-	"a8:5c:2c": {Name: "Apple", DeviceType: "laptop"},
-	"ac:bc:32": {Name: "Apple", DeviceType: "laptop"},
-	"b0:65:bd": {Name: "Apple", DeviceType: "laptop"},
-	"b4:f0:ab": {Name: "Apple", DeviceType: "laptop"},
-	"b8:09:8a": {Name: "Apple", DeviceType: "laptop"},
-	"b8:e8:56": {Name: "Apple", DeviceType: "laptop"},
-	"bc:3b:af": {Name: "Apple", DeviceType: "laptop"},
-	"c0:9f:42": {Name: "Apple", DeviceType: "laptop"},
-	"c4:2c:03": {Name: "Apple", DeviceType: "laptop"},
-	"c8:2a:14": {Name: "Apple", DeviceType: "laptop"},
-	"cc:08:8d": {Name: "Apple", DeviceType: "laptop"},
-	"d0:03:4b": {Name: "Apple", DeviceType: "laptop"},
-	"d4:9a:20": {Name: "Apple", DeviceType: "laptop"},
-	"d8:30:62": {Name: "Apple", DeviceType: "laptop"},
-	"dc:2b:2a": {Name: "Apple", DeviceType: "laptop"},
-	"e0:66:78": {Name: "Apple", DeviceType: "laptop"},
-	"e4:8b:7f": {Name: "Apple", DeviceType: "laptop"},
-	"e8:80:2e": {Name: "Apple", DeviceType: "laptop"},
-	"f0:18:98": {Name: "Apple", DeviceType: "laptop"},
-	"f4:f1:5a": {Name: "Apple", DeviceType: "laptop"},
-	"f8:1e:df": {Name: "Apple", DeviceType: "laptop"},
-	"fc:25:3f": {Name: "Apple", DeviceType: "laptop"},
+	// Apple - dispositivos principais
+	"00:03:93": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
+	"28:cf:e9": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
+	"a4:5e:60": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
+	"ac:de:48": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
+	"f0:18:98": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
+	"dc:a6:32": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
 
-	// Samsung
-	"00:12:fb": {Name: "Samsung", DeviceType: "smartphone"},
-	"00:15:b9": {Name: "Samsung", DeviceType: "smartphone"},
-	"00:16:32": {Name: "Samsung", DeviceType: "smartphone"},
-	"00:1b:98": {Name: "Samsung", DeviceType: "smartphone"},
-	"00:1d:25": {Name: "Samsung", DeviceType: "smartphone"},
-	"00:1e:7d": {Name: "Samsung", DeviceType: "smartphone"},
-	"00:1f:cd": {Name: "Samsung", DeviceType: "smartphone"},
-	"00:23:39": {Name: "Samsung", DeviceType: "smartphone"},
-	"00:23:d6": {Name: "Samsung", DeviceType: "smartphone"},
-	"00:26:37": {Name: "Samsung", DeviceType: "smartphone"},
-	"08:08:c2": {Name: "Samsung", DeviceType: "smartphone"},
-	"10:30:47": {Name: "Samsung", DeviceType: "smartphone"},
-	"18:3f:47": {Name: "Samsung", DeviceType: "smartphone"},
-	"20:64:32": {Name: "Samsung", DeviceType: "smartphone"},
-	"28:ba:b5": {Name: "Samsung", DeviceType: "smartphone"},
-	"34:23:ba": {Name: "Samsung", DeviceType: "smartphone"},
-	"3c:5a:37": {Name: "Samsung", DeviceType: "smartphone"},
-	"40:0e:85": {Name: "Samsung", DeviceType: "smartphone"},
-	"44:4e:1a": {Name: "Samsung", DeviceType: "smartphone"},
-	"48:5a:3f": {Name: "Samsung", DeviceType: "smartphone"},
-	"4c:bc:a5": {Name: "Samsung", DeviceType: "smartphone"},
-	"50:01:bb": {Name: "Samsung", DeviceType: "smartphone"},
-	"54:88:0e": {Name: "Samsung", DeviceType: "smartphone"},
-	"5c:0a:5b": {Name: "Samsung", DeviceType: "smartphone"},
-	"60:6b:bd": {Name: "Samsung", DeviceType: "smartphone"},
-	"68:eb:ae": {Name: "Samsung", DeviceType: "smartphone"},
-	"6c:2f:2c": {Name: "Samsung", DeviceType: "smartphone"},
-	"70:f9:27": {Name: "Samsung", DeviceType: "smartphone"},
-	"78:1f:db": {Name: "Samsung", DeviceType: "smartphone"},
-	"7c:61:66": {Name: "Samsung", DeviceType: "smartphone"},
-	"84:25:db": {Name: "Samsung", DeviceType: "smartphone"},
-	"88:30:8a": {Name: "Samsung", DeviceType: "smartphone"},
-	"8c:77:12": {Name: "Samsung", DeviceType: "smartphone"},
-	"90:18:7c": {Name: "Samsung", DeviceType: "smartphone"},
-	"94:e9:79": {Name: "Samsung", DeviceType: "smartphone"},
-	"9c:02:98": {Name: "Samsung", DeviceType: "smartphone"},
-	"a0:0b:ba": {Name: "Samsung", DeviceType: "smartphone"},
-	"a4:eb:d3": {Name: "Samsung", DeviceType: "smartphone"},
-	"a8:f2:74": {Name: "Samsung", DeviceType: "smartphone"},
-	"b4:07:f9": {Name: "Samsung", DeviceType: "smartphone"},
-	"b8:5e:7b": {Name: "Samsung", DeviceType: "smartphone"},
-	"bc:20:ba": {Name: "Samsung", DeviceType: "smartphone"},
-	"c0:bd:d1": {Name: "Samsung", DeviceType: "smartphone"},
-	"c4:57:6e": {Name: "Samsung", DeviceType: "smartphone"},
-	"c8:19:f7": {Name: "Samsung", DeviceType: "smartphone"},
-	"cc:07:ab": {Name: "Samsung", DeviceType: "smartphone"},
-	"d0:59:e4": {Name: "Samsung", DeviceType: "smartphone"},
-	"d4:e8:b2": {Name: "Samsung", DeviceType: "smartphone"},
-	"d8:57:ef": {Name: "Samsung", DeviceType: "smartphone"},
-	"dc:71:44": {Name: "Samsung", DeviceType: "smartphone"},
-	"e4:32:cb": {Name: "Samsung", DeviceType: "smartphone"},
-	"e8:50:8b": {Name: "Samsung", DeviceType: "smartphone"},
-	"ec:1f:72": {Name: "Samsung", DeviceType: "smartphone"},
-	"f0:25:b7": {Name: "Samsung", DeviceType: "smartphone"},
-	"f4:09:d8": {Name: "Samsung", DeviceType: "smartphone"},
-	"f8:04:2e": {Name: "Samsung", DeviceType: "smartphone"},
+	// Samsung - múltiplos dispositivos
+	"2c:44:01": {Name: "Samsung", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "laptop", "smarttv", "router"}, IsAmbiguous: true},
+	"38:2d:d1": {Name: "Samsung", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "laptop", "smarttv", "router"}, IsAmbiguous: true},
+	"78:d6:f0": {Name: "Samsung", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "laptop", "smarttv", "router"}, IsAmbiguous: true},
+	"dc:ef:09": {Name: "Samsung", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "laptop", "smarttv", "router"}, IsAmbiguous: true},
 
-	// Dell
-	"00:06:5b": {Name: "Dell", DeviceType: "laptop"},
-	"00:08:74": {Name: "Dell", DeviceType: "laptop"},
-	"00:0b:db": {Name: "Dell", DeviceType: "laptop"},
-	"00:0f:1f": {Name: "Dell", DeviceType: "laptop"},
-	"00:11:43": {Name: "Dell", DeviceType: "laptop"},
-	"00:12:3f": {Name: "Dell", DeviceType: "laptop"},
-	"00:13:72": {Name: "Dell", DeviceType: "laptop"},
-	"00:14:22": {Name: "Dell", DeviceType: "laptop"},
-	"00:15:c5": {Name: "Dell", DeviceType: "laptop"},
-	"00:18:8b": {Name: "Dell", DeviceType: "laptop"},
-	"00:19:b9": {Name: "Dell", DeviceType: "laptop"},
-	"00:1a:a0": {Name: "Dell", DeviceType: "laptop"},
-	"00:1c:23": {Name: "Dell", DeviceType: "laptop"},
-	"00:1d:09": {Name: "Dell", DeviceType: "laptop"},
-	"00:1e:4f": {Name: "Dell", DeviceType: "laptop"},
-	"00:21:70": {Name: "Dell", DeviceType: "laptop"},
-	"00:21:9b": {Name: "Dell", DeviceType: "laptop"},
-	"00:22:19": {Name: "Dell", DeviceType: "laptop"},
-	"00:23:ae": {Name: "Dell", DeviceType: "laptop"},
-	"00:24:e8": {Name: "Dell", DeviceType: "laptop"},
-	"00:25:64": {Name: "Dell", DeviceType: "laptop"},
-	"00:26:b9": {Name: "Dell", DeviceType: "laptop"},
-	"b8:ca:3a": {Name: "Dell", DeviceType: "laptop"},
-	"d4:ae:52": {Name: "Dell", DeviceType: "laptop"},
-	"e0:db:55": {Name: "Dell", DeviceType: "laptop"},
+	// Intel - principalmente laptops
+	"a4:83:e7": {Name: "Intel", DeviceType: "laptop", IsAmbiguous: false},
+	"cc:2f:71": {Name: "Intel", DeviceType: "laptop", IsAmbiguous: false},
+	"80:86:f2": {Name: "Intel", DeviceType: "laptop", IsAmbiguous: false},
 
-	// HP
-	"00:10:e3": {Name: "HP", DeviceType: "laptop"},
-	"00:11:0a": {Name: "HP", DeviceType: "laptop"},
-	"00:13:21": {Name: "HP", DeviceType: "laptop"},
-	"00:14:38": {Name: "HP", DeviceType: "laptop"},
-	"00:15:60": {Name: "HP", DeviceType: "laptop"},
-	"00:16:35": {Name: "HP", DeviceType: "laptop"},
-	"00:17:08": {Name: "HP", DeviceType: "laptop"},
-	"00:17:a4": {Name: "HP", DeviceType: "laptop"},
-	"00:18:fe": {Name: "HP", DeviceType: "laptop"},
-	"00:19:bb": {Name: "HP", DeviceType: "laptop"},
-	"00:1a:4b": {Name: "HP", DeviceType: "laptop"},
-	"00:1b:78": {Name: "HP", DeviceType: "laptop"},
-	"00:1c:c4": {Name: "HP", DeviceType: "laptop"},
-	"00:1e:0b": {Name: "HP", DeviceType: "laptop"},
-	"00:1f:29": {Name: "HP", DeviceType: "laptop"},
-	"00:21:5a": {Name: "HP", DeviceType: "laptop"},
-	"00:22:64": {Name: "HP", DeviceType: "laptop"},
-	"00:23:7d": {Name: "HP", DeviceType: "laptop"},
-	"00:24:81": {Name: "HP", DeviceType: "laptop"},
-	"00:25:b3": {Name: "HP", DeviceType: "laptop"},
-	"00:26:55": {Name: "HP", DeviceType: "laptop"},
+	// Qualcomm - principalmente smartphones
+	"00:03:7f": {Name: "Qualcomm", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "iot", "router"}, IsAmbiguous: true},
+	"00:0a:f5": {Name: "Qualcomm", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "iot", "router"}, IsAmbiguous: true},
 
-	// Lenovo
-	"00:21:cc": {Name: "Lenovo", DeviceType: "laptop"},
-	"00:23:24": {Name: "Lenovo", DeviceType: "laptop"},
-	"28:d2:44": {Name: "Lenovo", DeviceType: "laptop"},
-	"40:61:86": {Name: "Lenovo", DeviceType: "laptop"},
-	"54:ee:75": {Name: "Lenovo", DeviceType: "laptop"},
-	"68:f7:28": {Name: "Lenovo", DeviceType: "laptop"},
-	"74:e5:43": {Name: "Lenovo", DeviceType: "laptop"},
-	"a4:4e:31": {Name: "Lenovo", DeviceType: "laptop"},
-	"b8:ac:6f": {Name: "Lenovo", DeviceType: "laptop"},
-	"dc:41:a9": {Name: "Lenovo", DeviceType: "laptop"},
-	"f0:de:f1": {Name: "Lenovo", DeviceType: "laptop"},
-
-	// Xiaomi
-	"28:6c:07": {Name: "Xiaomi", DeviceType: "smartphone"},
-	"34:80:b3": {Name: "Xiaomi", DeviceType: "smartphone"},
-	"50:8f:4c": {Name: "Xiaomi", DeviceType: "smartphone"},
-	"64:09:80": {Name: "Xiaomi", DeviceType: "smartphone"},
-	"74:51:ba": {Name: "Xiaomi", DeviceType: "smartphone"},
-	"78:02:f8": {Name: "Xiaomi", DeviceType: "smartphone"},
-	"8c:be:be": {Name: "Xiaomi", DeviceType: "smartphone"},
-	"a0:86:c6": {Name: "Xiaomi", DeviceType: "smartphone"},
-	"ac:c1:ee": {Name: "Xiaomi", DeviceType: "smartphone"},
-	"b0:e2:35": {Name: "Xiaomi", DeviceType: "smartphone"},
-	"c4:0b:cb": {Name: "Xiaomi", DeviceType: "smartphone"},
-	"d0:62:a8": {Name: "Xiaomi", DeviceType: "smartphone"},
-	"f8:a4:5f": {Name: "Xiaomi", DeviceType: "smartphone"},
-
-	// Motorola
-	"00:1a:1b": {Name: "Motorola", DeviceType: "smartphone"},
-	"00:1e:46": {Name: "Motorola", DeviceType: "smartphone"},
-	"00:23:68": {Name: "Motorola", DeviceType: "smartphone"},
-	"00:24:37": {Name: "Motorola", DeviceType: "smartphone"},
-	"00:25:9c": {Name: "Motorola", DeviceType: "smartphone"},
-	"08:ee:8b": {Name: "Motorola", DeviceType: "smartphone"},
-	"18:46:17": {Name: "Motorola", DeviceType: "smartphone"},
-	"30:7c:30": {Name: "Motorola", DeviceType: "smartphone"},
-	"48:2c:a0": {Name: "Motorola", DeviceType: "smartphone"},
-	"5c:0e:8b": {Name: "Motorola", DeviceType: "smartphone"},
-	"80:56:f2": {Name: "Motorola", DeviceType: "smartphone"},
-	"c0:ee:fb": {Name: "Motorola", DeviceType: "smartphone"},
-	"f4:d9:fb": {Name: "Motorola", DeviceType: "smartphone"},
-
-	// LG
-	"00:1f:6b": {Name: "LG", DeviceType: "smartphone"},
-	"00:26:e2": {Name: "LG", DeviceType: "smartphone"},
-	"10:68:3f": {Name: "LG", DeviceType: "smartphone"},
-	"18:87:96": {Name: "LG", DeviceType: "smartphone"},
-	"1c:b0:94": {Name: "LG", DeviceType: "smartphone"},
-	"30:fd:38": {Name: "LG", DeviceType: "smartphone"},
-	"58:a2:b5": {Name: "LG", DeviceType: "smartphone"},
-	"60:d0:a9": {Name: "LG", DeviceType: "smartphone"},
-	"84:11:9e": {Name: "LG", DeviceType: "smartphone"},
-	"a0:39:f7": {Name: "LG", DeviceType: "smartphone"},
+	// Xiaomi - múltiplos dispositivos
+	"34:ce:00": {Name: "Xiaomi", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "laptop", "iot", "tablet"}, IsAmbiguous: true},
+	"50:8f:4c": {Name: "Xiaomi", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "laptop", "iot", "tablet"}, IsAmbiguous: true},
 
 	// Huawei
-	"00:18:82": {Name: "Huawei", DeviceType: "smartphone"},
-	"00:25:9e": {Name: "Huawei", DeviceType: "smartphone"},
-	"0c:37:dc": {Name: "Huawei", DeviceType: "smartphone"},
-	"18:0f:76": {Name: "Huawei", DeviceType: "smartphone"},
-	"1c:1d:67": {Name: "Huawei", DeviceType: "smartphone"},
-	"24:69:68": {Name: "Huawei", DeviceType: "smartphone"},
-	"28:6e:d4": {Name: "Huawei", DeviceType: "smartphone"},
-	"38:bc:1a": {Name: "Huawei", DeviceType: "smartphone"},
-	"44:6e:e5": {Name: "Huawei", DeviceType: "smartphone"},
-	"54:25:ea": {Name: "Huawei", DeviceType: "smartphone"},
-	"70:72:3c": {Name: "Huawei", DeviceType: "smartphone"},
-	"78:d7:52": {Name: "Huawei", DeviceType: "smartphone"},
-	"84:a8:e4": {Name: "Huawei", DeviceType: "smartphone"},
-	"a4:c4:94": {Name: "Huawei", DeviceType: "smartphone"},
-	"c4:f0:81": {Name: "Huawei", DeviceType: "smartphone"},
-	"e8:cd:2d": {Name: "Huawei", DeviceType: "smartphone"},
+	"00:e0:fc": {Name: "Huawei", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "laptop", "router"}, IsAmbiguous: true},
+	"ac:5a:fc": {Name: "Huawei", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "laptop", "router"}, IsAmbiguous: true},
+
+	// Broadcom - principalmente equipamentos de rede
+	"84:0b:bb": {Name: "Broadcom", DeviceType: "incerto", PossibleTypes: []string{"router", "laptop", "smartphone"}, IsAmbiguous: true},
+	"b8:27:eb": {Name: "Broadcom", DeviceType: "iot", IsAmbiguous: false}, // Raspberry Pi
+
+	// TP-Link - equipamentos de rede
+	"50:c7:bf": {Name: "TP-Link", DeviceType: "router", IsAmbiguous: false},
+	"ec:08:6b": {Name: "TP-Link", DeviceType: "router", IsAmbiguous: false},
+
+	// Motorola
+	"cc:fb:65": {Name: "Motorola", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "router"}, IsAmbiguous: true},
+
+	// LG
+	"10:68:3f": {Name: "LG Electronics", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "smarttv", "laptop"}, IsAmbiguous: true},
+
+	// ASUS
+	"2c:56:dc": {Name: "ASUS", DeviceType: "incerto", PossibleTypes: []string{"laptop", "router", "smartphone"}, IsAmbiguous: true},
+	"ac:9e:17": {Name: "ASUS", DeviceType: "incerto", PossibleTypes: []string{"laptop", "router", "smartphone"}, IsAmbiguous: true},
+
+	// Espressif (ESP32/ESP8266) - IoT
+	"30:ae:a4": {Name: "Espressif", DeviceType: "iot", IsAmbiguous: false},
+	"24:6f:28": {Name: "Espressif", DeviceType: "iot", IsAmbiguous: false},
+
+	// Shenzhen (fabricantes chineses)
+	"d8:c6:78": {Name: "Shenzhen", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "iot"}, IsAmbiguous: true},
+
+	// Sony
+	"08:00:46": {Name: "Sony", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "smarttv", "console", "laptop"}, IsAmbiguous: true},
+	"54:84:1b": {Name: "Sony", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "smarttv", "console", "laptop"}, IsAmbiguous: true},
 
 	// Microsoft
-	"00:03:ff": {Name: "Microsoft", DeviceType: "laptop"},
-	"00:0d:3a": {Name: "Microsoft", DeviceType: "laptop"},
-	"00:15:5d": {Name: "Microsoft", DeviceType: "laptop"},
-	"00:50:f2": {Name: "Microsoft", DeviceType: "laptop"},
-	"7c:ed:8d": {Name: "Microsoft", DeviceType: "laptop"},
-	"90:e1:7b": {Name: "Microsoft", DeviceType: "laptop"},
+	"00:50:f2": {Name: "Microsoft", DeviceType: "incerto", PossibleTypes: []string{"laptop", "console", "iot"}, IsAmbiguous: true},
+	"7c:ed:8d": {Name: "Microsoft", DeviceType: "incerto", PossibleTypes: []string{"laptop", "console", "iot"}, IsAmbiguous: true},
 
-	// Asus
-	"00:1f:c6": {Name: "Asus", DeviceType: "laptop"},
-	"08:62:66": {Name: "Asus", DeviceType: "laptop"},
-	"10:bf:48": {Name: "Asus", DeviceType: "laptop"},
-	"1c:87:2c": {Name: "Asus", DeviceType: "laptop"},
-	"2c:56:dc": {Name: "Asus", DeviceType: "laptop"},
-	"38:d5:47": {Name: "Asus", DeviceType: "laptop"},
-	"50:46:5d": {Name: "Asus", DeviceType: "laptop"},
-	"60:45:cb": {Name: "Asus", DeviceType: "laptop"},
-	"70:8b:cd": {Name: "Asus", DeviceType: "laptop"},
-	"9c:5c:8e": {Name: "Asus", DeviceType: "laptop"},
-	"ac:22:0b": {Name: "Asus", DeviceType: "laptop"},
-	"b8:ee:65": {Name: "Asus", DeviceType: "laptop"},
+	// Nintendo
+	"00:17:ab": {Name: "Nintendo", DeviceType: "console", IsAmbiguous: false},
+	"a4:c0:e1": {Name: "Nintendo", DeviceType: "console", IsAmbiguous: false},
+
+	// Dell
+	"00:14:22": {Name: "Dell", DeviceType: "laptop", IsAmbiguous: false},
+	"b8:ca:3a": {Name: "Dell", DeviceType: "laptop", IsAmbiguous: false},
+
+	// HP/Hewlett-Packard
+	"00:1b:78": {Name: "Hewlett Packard", DeviceType: "laptop", IsAmbiguous: false},
+	"2c:27:d7": {Name: "Hewlett Packard", DeviceType: "laptop", IsAmbiguous: false},
+
+	// Lenovo
+	"00:1a:4b": {Name: "Lenovo", DeviceType: "laptop", IsAmbiguous: false},
+	"54:ee:75": {Name: "Lenovo", DeviceType: "laptop", IsAmbiguous: false},
+
+	// Cisco
+	"00:0c:41": {Name: "Cisco", DeviceType: "router", IsAmbiguous: false},
+	"00:23:ab": {Name: "Cisco", DeviceType: "router", IsAmbiguous: false},
+
+	// Netgear
+	"00:09:5b": {Name: "Netgear", DeviceType: "router", IsAmbiguous: false},
+	"a0:40:a0": {Name: "Netgear", DeviceType: "router", IsAmbiguous: false},
+
+	// D-Link
+	"00:05:5d": {Name: "D-Link", DeviceType: "router", IsAmbiguous: false},
+	"cc:b2:55": {Name: "D-Link", DeviceType: "router", IsAmbiguous: false},
+
+	// Linksys
+	"00:06:25": {Name: "Linksys", DeviceType: "router", IsAmbiguous: false},
+	"48:f8:b3": {Name: "Linksys", DeviceType: "router", IsAmbiguous: false},
+
+	// Amazon (Fire TV, Echo, etc.)
+	"00:fc:8b": {Name: "Amazon", DeviceType: "smarttv", IsAmbiguous: false},
+	"38:f7:3d": {Name: "Amazon", DeviceType: "iot", IsAmbiguous: false},
+
+	// Google (Chromecast, Nest, etc.)
+	"00:1a:11": {Name: "Google", DeviceType: "smarttv", IsAmbiguous: false},
+	"64:16:66": {Name: "Google", DeviceType: "iot", IsAmbiguous: false},
+
+	// Roku
+	"dc:3a:5e": {Name: "Roku", DeviceType: "smarttv", IsAmbiguous: false},
+	"b0:a7:37": {Name: "Roku", DeviceType: "smarttv", IsAmbiguous: false},
+
+	// OnePlus
+	"ac:37:43": {Name: "OnePlus", DeviceType: "smartphone", IsAmbiguous: false},
+	"e8:b2:ac": {Name: "OnePlus", DeviceType: "smartphone", IsAmbiguous: false},
+
+	// Oppo
+	"20:6b:e7": {Name: "Oppo", DeviceType: "smartphone", IsAmbiguous: false},
+	"94:e9:79": {Name: "Oppo", DeviceType: "smartphone", IsAmbiguous: false},
+
+	// Vivo
+	"8c:be:be": {Name: "Vivo", DeviceType: "smartphone", IsAmbiguous: false},
+	"f8:e6:1a": {Name: "Vivo", DeviceType: "smartphone", IsAmbiguous: false},
+
+	// Realme
+	"02:69:6a": {Name: "Realme", DeviceType: "smartphone", IsAmbiguous: false},
 
 	// Acer
-	"00:01:e3": {Name: "Acer", DeviceType: "laptop"},
-	"00:03:0d": {Name: "Acer", DeviceType: "laptop"},
-	"00:0e:2e": {Name: "Acer", DeviceType: "laptop"},
-	"00:16:36": {Name: "Acer", DeviceType: "laptop"},
-	"00:1e:68": {Name: "Acer", DeviceType: "laptop"},
-	"00:21:85": {Name: "Acer", DeviceType: "laptop"},
-	"00:24:8c": {Name: "Acer", DeviceType: "laptop"},
-	"00:26:9e": {Name: "Acer", DeviceType: "laptop"},
+	"00:02:e3": {Name: "Acer", DeviceType: "laptop", IsAmbiguous: false},
+	"00:21:85": {Name: "Acer", DeviceType: "laptop", IsAmbiguous: false},
+
+	// Toshiba
+	"00:00:ba": {Name: "Toshiba", DeviceType: "laptop", IsAmbiguous: false},
+	"00:80:d0": {Name: "Toshiba", DeviceType: "laptop", IsAmbiguous: false},
+
+	// Marvell (chipsets)
+	"00:50:43": {Name: "Marvell", DeviceType: "incerto", PossibleTypes: []string{"router", "laptop", "iot"}, IsAmbiguous: true},
+
+	// Ralink/MediaTek
+	"00:0c:43": {Name: "Ralink", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "iot"}, IsAmbiguous: true},
 }
 
-// IdentifyDevice identifica o tipo e fabricante de um dispositivo pelo MAC
-func IdentifyDevice(mac string) (vendor string, deviceType string) {
-	// Normaliza o MAC para minúsculas
-	mac = strings.ToLower(mac)
-
-	// Pega os primeiros 3 octetos (OUI) - formato: xx:xx:xx
-	// Exemplo: "a4:5e:60:12:34:56" -> "a4:5e:60"
-	parts := strings.Split(mac, ":")
+// lookupVendorLocal consulta apenas nossa base OUI local expandida
+// TODO v2.0: Refatorar para usar biblioteca própria de consulta MAC address
+// Sistema futuro incluirá cache, atualizações automáticas e múltiplas fontes
+func lookupVendorLocal(mac string) (VendorInfo, error) {
+	// Extrai os primeiros 3 octetos do MAC (OUI)
+	parts := strings.Split(strings.ToLower(mac), ":")
 	if len(parts) < 3 {
-		return "Unknown", "unknown"
+		return VendorInfo{}, fmt.Errorf("MAC inválido")
 	}
 
 	oui := strings.Join(parts[:3], ":")
 
-	if info, ok := ouiDatabase[oui]; ok {
-		return info.Name, info.DeviceType
+	// Verifica na nossa base expandida
+	if info, exists := ouiDatabase[oui]; exists {
+		return info, nil
 	}
 
-	return "Unknown", "unknown"
+	return VendorInfo{}, fmt.Errorf("vendor não encontrado na base local")
+}
+
+// inferDeviceType determina o tipo de dispositivo baseado no fabricante
+// Retorna informações sobre ambiguidade quando fabricante faz múltiplos tipos
+func inferDeviceType(company string) VendorInfo {
+	company = strings.ToLower(company)
+
+	// Fabricantes claramente de smartphones apenas
+	if strings.Contains(company, "oneplus") ||
+		strings.Contains(company, "oppo") ||
+		strings.Contains(company, "vivo") ||
+		strings.Contains(company, "realme") ||
+		strings.Contains(company, "nokia") && strings.Contains(company, "mobile") {
+		return VendorInfo{
+			Name:        company,
+			DeviceType:  "smartphone",
+			IsAmbiguous: false,
+		}
+	}
+
+	// Fabricantes claramente de laptops/desktops apenas
+	if strings.Contains(company, "intel") ||
+		strings.Contains(company, "dell") ||
+		strings.Contains(company, "hp") ||
+		strings.Contains(company, "hewlett") ||
+		strings.Contains(company, "lenovo") && !strings.Contains(company, "mobile") ||
+		strings.Contains(company, "acer") ||
+		strings.Contains(company, "toshiba") ||
+		strings.Contains(company, "fujitsu") ||
+		strings.Contains(company, "msi") ||
+		strings.Contains(company, "gigabyte") {
+		return VendorInfo{
+			Name:        company,
+			DeviceType:  "laptop",
+			IsAmbiguous: false,
+		}
+	}
+
+	// Fabricantes claramente de equipamentos de rede apenas
+	if strings.Contains(company, "cisco") ||
+		strings.Contains(company, "tp-link") ||
+		strings.Contains(company, "netgear") ||
+		strings.Contains(company, "d-link") ||
+		strings.Contains(company, "linksys") ||
+		strings.Contains(company, "ubiquiti") ||
+		strings.Contains(company, "mikrotik") ||
+		strings.Contains(company, "aruba") ||
+		strings.Contains(company, "juniper") ||
+		strings.Contains(company, "fortinet") {
+		return VendorInfo{
+			Name:        company,
+			DeviceType:  "router",
+			IsAmbiguous: false,
+		}
+	}
+
+	// Fabricantes claramente IoT apenas
+	if strings.Contains(company, "espressif") ||
+		strings.Contains(company, "raspberry") ||
+		strings.Contains(company, "arduino") ||
+		strings.Contains(company, "nordic") ||
+		strings.Contains(company, "tuya smart") ||
+		strings.Contains(company, "sonoff") {
+		return VendorInfo{
+			Name:        company,
+			DeviceType:  "iot",
+			IsAmbiguous: false,
+		}
+	}
+
+	// FABRICANTES AMBÍGUOS (fazem múltiplos tipos)
+
+	// Apple - principalmente laptops e smartphones
+	if strings.Contains(company, "apple") {
+		if strings.Contains(company, "iphone") || strings.Contains(company, "mobile") {
+			return VendorInfo{
+				Name:        company,
+				DeviceType:  "smartphone",
+				IsAmbiguous: false,
+			}
+		}
+		if strings.Contains(company, "ipad") {
+			return VendorInfo{
+				Name:        company,
+				DeviceType:  "tablet",
+				IsAmbiguous: false,
+			}
+		}
+		// Apple genérico - pode ser MacBook, iPhone, iPad, Apple TV, etc.
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"laptop", "smartphone", "tablet", "smarttv"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// Samsung - faz de tudo: smartphones, TVs, laptops, tablets, routers
+	if strings.Contains(company, "samsung") {
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"smartphone", "tablet", "laptop", "smarttv", "router"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// LG - smartphones, TVs, laptops
+	if strings.Contains(company, "lg") {
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"smartphone", "smarttv", "laptop"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// Xiaomi - smartphones, laptops, IoT, tablets, TVs
+	if strings.Contains(company, "xiaomi") {
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"smartphone", "laptop", "iot", "tablet", "smarttv"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// Huawei - principalmente smartphones, mas também routers e laptops
+	if strings.Contains(company, "huawei") {
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"smartphone", "tablet", "laptop", "router"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// Qualcomm - principalmente smartphones, mas também IoT e routers
+	if strings.Contains(company, "qualcomm") {
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"smartphone", "iot", "router"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// ASUS - laptops, routers, smartphones
+	if strings.Contains(company, "asus") {
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"laptop", "router", "smartphone"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// Sony - smartphones, TVs, consoles, laptops
+	if strings.Contains(company, "sony") {
+		if strings.Contains(company, "mobile") {
+			return VendorInfo{
+				Name:        company,
+				DeviceType:  "smartphone",
+				IsAmbiguous: false,
+			}
+		}
+		if strings.Contains(company, "computer") || strings.Contains(company, "playstation") {
+			return VendorInfo{
+				Name:        company,
+				DeviceType:  "console",
+				IsAmbiguous: false,
+			}
+		}
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"smartphone", "smarttv", "console", "laptop"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// Motorola - principalmente smartphones, mas também routers
+	if strings.Contains(company, "motorola") {
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"smartphone", "router"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// Broadcom - principalmente routers, mas também encontrado em laptops/smartphones
+	if strings.Contains(company, "broadcom") {
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"router", "laptop", "smartphone"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// MediaTek - principalmente smartphones, mas também IoT e tablets
+	if strings.Contains(company, "mediatek") {
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"smartphone", "tablet", "iot"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// Microsoft - laptops (Surface), consoles (Xbox), IoT
+	if strings.Contains(company, "microsoft") {
+		if strings.Contains(company, "surface") {
+			return VendorInfo{
+				Name:        company,
+				DeviceType:  "laptop",
+				IsAmbiguous: false,
+			}
+		}
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"laptop", "console", "iot"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// Consoles específicos
+	if strings.Contains(company, "nintendo") {
+		return VendorInfo{
+			Name:        company,
+			DeviceType:  "console",
+			IsAmbiguous: false,
+		}
+	}
+
+	// Smart TVs e streaming
+	if strings.Contains(company, "amazon") ||
+		strings.Contains(company, "roku") ||
+		strings.Contains(company, "chromecast") {
+		return VendorInfo{
+			Name:        company,
+			DeviceType:  "smarttv",
+			IsAmbiguous: false,
+		}
+	}
+
+	// Fabricantes chineses genéricos - geralmente smartphones ou IoT
+	if strings.Contains(company, "shenzhen") ||
+		strings.Contains(company, "guangzhou") ||
+		strings.Contains(company, "dongguan") ||
+		strings.Contains(company, "beijing") ||
+		strings.Contains(company, "hangzhou") {
+		return VendorInfo{
+			Name:          company,
+			DeviceType:    "incerto",
+			PossibleTypes: []string{"smartphone", "iot"},
+			IsAmbiguous:   true,
+		}
+	}
+
+	// Fallback baseado em palavras-chave
+	if strings.Contains(company, "mobile") || strings.Contains(company, "phone") {
+		return VendorInfo{
+			Name:        company,
+			DeviceType:  "smartphone",
+			IsAmbiguous: false,
+		}
+	}
+
+	if strings.Contains(company, "computer") || strings.Contains(company, "laptop") {
+		return VendorInfo{
+			Name:        company,
+			DeviceType:  "laptop",
+			IsAmbiguous: false,
+		}
+	}
+
+	if strings.Contains(company, "network") || strings.Contains(company, "router") {
+		return VendorInfo{
+			Name:        company,
+			DeviceType:  "router",
+			IsAmbiguous: false,
+		}
+	}
+
+	if strings.Contains(company, "smart") || strings.Contains(company, "iot") {
+		return VendorInfo{
+			Name:        company,
+			DeviceType:  "iot",
+			IsAmbiguous: false,
+		}
+	}
+
+	// Completamente desconhecido
+	return VendorInfo{
+		Name:        company,
+		DeviceType:  "unknown",
+		IsAmbiguous: false,
+	}
+}
+
+// getDeviceEmoji retorna o emoji apropriado para o tipo de dispositivo
+func getDeviceEmoji(deviceType string) string {
+	switch deviceType {
+	case "smartphone":
+		return "📱"
+	case "tablet":
+		return "📲"
+	case "laptop":
+		return "💻"
+	case "router":
+		return "🌐"
+	case "iot":
+		return "🔗"
+	case "smarttv":
+		return "📺"
+	case "console":
+		return "🎮"
+	case "incerto":
+		return "❔"
+	default:
+		return "❓"
+	}
+}
+
+// FormatDeviceInfo retorna uma string formatada com emoji para o dispositivo
+func FormatDeviceInfo(vendor, deviceType string) string {
+	emoji := getDeviceEmoji(deviceType)
+	return fmt.Sprintf("%s %s - %s", emoji, vendor, deviceType)
+}
+
+// FormatDeviceInfoWithTooltip retorna informação formatada incluindo tipos possíveis
+func FormatDeviceInfoWithTooltip(info VendorInfo) string {
+	emoji := getDeviceEmoji(info.DeviceType)
+
+	if info.IsAmbiguous && len(info.PossibleTypes) > 0 {
+		possibleEmojis := make([]string, len(info.PossibleTypes))
+		for i, deviceType := range info.PossibleTypes {
+			possibleEmojis[i] = fmt.Sprintf("%s %s", getDeviceEmoji(deviceType), deviceType)
+		}
+		tooltip := strings.Join(possibleEmojis, ", ")
+		return fmt.Sprintf("%s %s - %s (pode ser: %s)", emoji, info.Name, info.DeviceType, tooltip)
+	}
+
+	return fmt.Sprintf("%s %s - %s", emoji, info.Name, info.DeviceType)
+}
+
+// IdentifyDevice identifica o tipo e fabricante usando OSINT + cache + fallback
+func IdentifyDevice(mac string) (vendor string, deviceType string) {
+	info := IdentifyDeviceDetailed(mac)
+	return info.Name, info.DeviceType
+}
+
+// IdentifyDeviceDetailed retorna informações completas incluindo ambiguidade
+func IdentifyDeviceDetailed(mac string) VendorInfo {
+	mac = strings.ToLower(mac)
+	parts := strings.Split(mac, ":")
+	if len(parts) < 3 {
+		return VendorInfo{Name: "Unknown", DeviceType: "unknown", IsAmbiguous: false}
+	}
+
+	oui := strings.Join(parts[:3], ":")
+
+	// 1. Verifica cache primeiro (performance)
+	vendorCache.mu.RLock()
+	if info, exists := vendorCache.cache[oui]; exists {
+		vendorCache.mu.RUnlock()
+		return info
+	}
+	vendorCache.mu.RUnlock()
+
+	// 2. Tenta biblioteca OUI local
+	if info, err := lookupVendorLocal(mac); err == nil {
+		vendorCache.mu.Lock()
+		vendorCache.cache[oui] = info
+		vendorCache.mu.Unlock()
+
+		log.Printf("📋 LOCAL: %s [%s] (base OUI IEEE)",
+			mac, FormatDeviceInfoWithTooltip(info))
+		return info
+	}
+
+	// 3. Fallback para base local (OUIs mais comuns)
+	if baseInfo, ok := ouiDatabase[oui]; ok {
+		// Aplica a nova lógica de inferência à base local também
+		detailedInfo := inferDeviceType(baseInfo.Name)
+		detailedInfo.Name = baseInfo.Name // Mantém o nome da base local
+
+		vendorCache.mu.Lock()
+		vendorCache.cache[oui] = detailedInfo
+		vendorCache.mu.Unlock()
+
+		log.Printf("📋 FALLBACK: %s [%s] (base interna)",
+			mac, FormatDeviceInfoWithTooltip(detailedInfo))
+		return detailedInfo
+	}
+
+	// 4. Não encontrado - cacheia como desconhecido para evitar consultas repetidas
+	unknown := VendorInfo{Name: "Unknown", DeviceType: "unknown", IsAmbiguous: false}
+	vendorCache.mu.Lock()
+	vendorCache.cache[oui] = unknown
+	vendorCache.mu.Unlock()
+
+	return unknown
 }

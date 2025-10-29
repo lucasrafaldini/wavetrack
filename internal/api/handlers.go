@@ -36,6 +36,8 @@ type DeviceResponse struct {
 	FirstSeen      time.Time  `json:"first_seen"`
 	LastSeen       time.Time  `json:"last_seen"`
 	IsActive       bool       `json:"is_active"`
+	IsAmbiguous    bool       `json:"is_ambiguous"`   // true se o fabricante faz múltiplos tipos
+	PossibleTypes  []string   `json:"possible_types"` // tipos possíveis quando ambíguo
 	EmployeeName   string     `json:"employee_name,omitempty"`
 	Department     string     `json:"department,omitempty"`
 	FirstSeenToday *time.Time `json:"first_seen_today,omitempty"`
@@ -111,6 +113,8 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 			FirstSeen:      device.FirstSeen,
 			LastSeen:       device.LastSeen,
 			IsActive:       device.IsActive && now.Sub(device.LastSeen) < offlineThreshold,
+			IsAmbiguous:    device.IsAmbiguous,
+			PossibleTypes:  device.PossibleTypes,
 		}
 
 		if employee != nil {
