@@ -43,3 +43,21 @@ type RouterConfig struct {
 	Channel      int    `json:"channel"`       // Canal Wi-Fi para monitorar
 	ScanInterval int    `json:"scan_interval"` // Intervalo de scan em segundos
 }
+
+// RegistrationToken representa um token de cadastro via QR Code
+type RegistrationToken struct {
+	Token     string     `json:"token"`
+	ExpiresAt time.Time  `json:"expires_at"`
+	Used      bool       `json:"used"`
+	CreatedAt time.Time  `json:"created_at"`
+	UsedAt    *time.Time `json:"used_at,omitempty"`
+}
+
+// RegistrationSubmission representa os dados enviados pelo colaborador
+type RegistrationSubmission struct {
+	Token            string `json:"token"`
+	Name             string `json:"name"`
+	Department       string `json:"department"`
+	CustomDeviceType string `json:"custom_device_type,omitempty"`
+	CustomVendor     string `json:"custom_vendor,omitempty"`
+}

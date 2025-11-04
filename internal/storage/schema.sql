@@ -47,6 +47,18 @@ CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
 CREATE INDEX IF NOT EXISTS idx_events_mac ON events(mac_address);
 
+-- Tabela de tokens de registro via QR Code
+CREATE TABLE IF NOT EXISTS registration_tokens (
+    token TEXT PRIMARY KEY,
+    expires_at TIMESTAMP NOT NULL,
+    used BOOLEAN DEFAULT 0,
+    created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    used_at TIMESTAMP
+);
+
+-- Índice para limpeza de tokens expirados
+CREATE INDEX IF NOT EXISTS idx_tokens_expires ON registration_tokens(expires_at);
+
 -- View para facilitar consultas (device + employee)
 CREATE VIEW IF NOT EXISTS device_details AS
 SELECT 

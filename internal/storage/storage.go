@@ -891,3 +891,66 @@ func (s *Storage) getOnlineDurationForDate(macAddress string, startOfDay, endOfD
 
 	return totalDuration, nil
 }
+
+// === REGISTRATION TOKENS ===
+
+// CreateRegistrationToken cria um novo token de registro
+func (s *Storage) CreateRegistrationToken(token *models.RegistrationToken) error {
+	query := `
+		INSERT INTO registration_tokens (token, expires_at, used, created_at)
+		VALUES (?, ?, ?, ?)
+	`
+	_, err := s.db.Exec(query, token.Token, token.ExpiresAt, token.Used, token.CreatedAt)
+	return err
+}
+
+// GetRegistrationToken busca um token pelo seu valor
+func (s *Storage) GetRegistrationToken(token string) (*models.RegistrationToken, error) {
+	query := `
+		SELECT token, expires_at, used, created_at, used_at
+		FROM registration_tokens
+		WHERE token = ?
+	`
+
+	var rt models.RegistrationToken
+	var usedAt sql.NullTime
+
+	err := s.db.QueryRow(query, token).Scan(
+		&rt.Token,
+		&rt.ExpiresAt,
+		&rt.Used,
+		&rt.CreatedAt,
+		&usedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if usedAt.Valid {
+		rt.UsedAt = &usedAt.Time
+	}
+
+	return &rt, nil
+}
+
+// MarkTokenAsUsed marca um token como usado
+func (s *Storage) MarkTokenAsUsed(token string) error {
+	query := `
+		UPDATE registration_tokens 
+		SET used = 1, used_at = CURRENT_TIMESTAMP
+		WHERE token = ?
+	`
+	_, err := s.db.Exec(query, token)
+	return err
+}
+
+// CleanExpiredTokens remove tokens expirados (rotina de limpeza)
+func (s *Storage) CleanExpiredTokens() error {
+	query := `DELETE FROM registration_tokens WHERE expires_at < CURRENT_TIMESTAMP`
+	_, err := s.db.Exec(query)
+	return err
+}

@@ -63,9 +63,10 @@ func main() {
 	// Inicializa o servidor web
 	apiServer := api.NewServer(dataStorage, cfg)
 	go func() {
-		addr := fmt.Sprintf(":%d", *port)
-		log.Printf("🌐 Servidor web iniciado em http://localhost%s", addr)
+		addr := fmt.Sprintf("0.0.0.0:%d", *port)
+		log.Printf("🌐 Servidor web iniciado em http://0.0.0.0%s", addr[7:])
 		log.Println("   Acesse o dashboard no navegador!")
+		log.Println("   📱 Dispositivos na rede podem acessar via IP local")
 		if err := http.ListenAndServe(addr, apiServer.SetupRoutes()); err != nil {
 			log.Fatalf("Erro ao iniciar servidor web: %v", err)
 		}

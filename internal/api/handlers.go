@@ -1,14 +1,20 @@
 package api
 
 import (
+	"encoding/base64"
 	"encoding/json"
+	"fmt"
 	"log"
+	"net"
 	"net/http"
+	"os/exec"
+	"strings"
 	"time"
 
 	"github.com/lucasrafaldini/wavetrack/internal/config"
 	"github.com/lucasrafaldini/wavetrack/internal/models"
 	"github.com/lucasrafaldini/wavetrack/internal/storage"
+	qrcode "github.com/skip2/go-qrcode"
 )
 
 // Server gerencia a API web
@@ -65,6 +71,12 @@ func (s *Server) SetupRoutes() http.Handler {
 	mux.HandleFunc("/api/events", s.handleEvents)
 	mux.HandleFunc("/api/report/today", s.handleReportToday)
 	mux.HandleFunc("/api/history/7days", s.handleHistory7Days)
+
+	// Registration via QR Code
+	mux.HandleFunc("/api/register/token", s.handleGenerateQRCode)
+	mux.HandleFunc("/api/register/validate/", s.handleValidateToken)
+	mux.HandleFunc("/api/register/submit", s.handleRegistrationSubmit)
+	mux.HandleFunc("/register/", s.handleRegistrationPage)
 
 	// Serve arquivos estáticos (interface web)
 	mux.Handle("/", http.FileServer(http.Dir("web")))
@@ -519,4 +531,363 @@ func (s *Server) enableCORS(handler http.Handler) http.Handler {
 
 		handler.ServeHTTP(w, r)
 	})
+}
+
+// === REGISTRATION VIA QR CODE ===
+
+// handleGenerateQRCode gera um token e retorna o QR code
+func (s *Server) handleGenerateQRCode(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Gera token único (UUID simples)
+	token := fmt.Sprintf("%d-%d", time.Now().UnixNano(), time.Now().Unix())
+
+	// Token expira em 24 horas
+	expiresAt := time.Now().Add(24 * time.Hour)
+
+	// Salva no banco
+	regToken := &models.RegistrationToken{
+		Token:     token,
+		ExpiresAt: expiresAt,
+		Used:      false,
+		CreatedAt: time.Now(),
+	}
+
+	if err := s.storage.CreateRegistrationToken(regToken); err != nil {
+		log.Printf("Erro ao criar token: %v", err)
+		http.Error(w, "Erro ao gerar token", http.StatusInternalServerError)
+		return
+	}
+
+	// Obtém IP local do servidor
+	serverIP := s.getServerIP(r)
+
+	// Monta URL de registro local
+	registerURL := fmt.Sprintf("http://%s/register/%s", serverIP, token)
+
+	// Gera QR code
+	qrCode, err := qrcode.Encode(registerURL, qrcode.Medium, 256)
+	if err != nil {
+		log.Printf("Erro ao gerar QR code: %v", err)
+		http.Error(w, "Erro ao gerar QR code", http.StatusInternalServerError)
+		return
+	}
+
+	// Converte para base64
+	qrBase64 := base64.StdEncoding.EncodeToString(qrCode)
+
+	log.Printf("✓ QR Code gerado: %s (expira em 24h)", registerURL)
+
+	// Retorna resposta
+	response := map[string]interface{}{
+		"token":      token,
+		"url":        registerURL,
+		"qr_code":    fmt.Sprintf("data:image/png;base64,%s", qrBase64),
+		"expires_at": expiresAt.Format(time.RFC3339),
+		"expires_in": "24 horas",
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleValidateToken valida se um token ainda é válido
+func (s *Server) handleValidateToken(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Extrai token da URL: /api/register/validate/{token}
+	token := r.URL.Path[len("/api/register/validate/"):]
+	if token == "" {
+		http.Error(w, "Token não informado", http.StatusBadRequest)
+		return
+	}
+
+	// Busca token no banco
+	regToken, err := s.storage.GetRegistrationToken(token)
+	if err != nil {
+		log.Printf("Erro ao buscar token: %v", err)
+		http.Error(w, "Erro ao validar token", http.StatusInternalServerError)
+		return
+	}
+
+	if regToken == nil {
+		http.Error(w, "Token inválido", http.StatusNotFound)
+		return
+	}
+
+	// Verifica se já foi usado
+	if regToken.Used {
+		http.Error(w, "Token já foi utilizado", http.StatusGone)
+		return
+	}
+
+	// Verifica se expirou
+	if time.Now().After(regToken.ExpiresAt) {
+		http.Error(w, "Token expirado", http.StatusGone)
+		return
+	}
+
+	// Token válido
+	response := map[string]interface{}{
+		"valid":      true,
+		"expires_at": regToken.ExpiresAt.Format(time.RFC3339),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
+}
+
+// handleRegistrationSubmit processa o cadastro via QR code
+func (s *Server) handleRegistrationSubmit(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Parse request
+	var submission models.RegistrationSubmission
+	if err := json.NewDecoder(r.Body).Decode(&submission); err != nil {
+		http.Error(w, "Requisição inválida", http.StatusBadRequest)
+		return
+	}
+
+	// Valida campos obrigatórios
+	if submission.Token == "" || submission.Name == "" {
+		http.Error(w, "Token e nome são obrigatórios", http.StatusBadRequest)
+		return
+	}
+
+	// Busca e valida token
+	regToken, err := s.storage.GetRegistrationToken(submission.Token)
+	if err != nil {
+		log.Printf("Erro ao buscar token: %v", err)
+		http.Error(w, "Erro ao validar token", http.StatusInternalServerError)
+		return
+	}
+
+	if regToken == nil {
+		http.Error(w, "Token inválido", http.StatusNotFound)
+		return
+	}
+
+	if regToken.Used {
+		http.Error(w, "Token já foi utilizado", http.StatusGone)
+		return
+	}
+
+	if time.Now().After(regToken.ExpiresAt) {
+		http.Error(w, "Token expirado", http.StatusGone)
+		return
+	}
+
+	// Captura MAC address do dispositivo que fez a requisição
+	macAddress := s.getMACFromRequest(r)
+	if macAddress == "" {
+		// Se não conseguir detectar, tenta pegar do IP
+		macAddress = s.getMACFromIP(r.RemoteAddr)
+	}
+
+	if macAddress == "" {
+		log.Printf("⚠️  Não foi possível detectar MAC address para %s", submission.Name)
+		http.Error(w, "Não foi possível detectar seu dispositivo. Tente conectar ao Wi-Fi primeiro.", http.StatusBadRequest)
+		return
+	}
+
+	log.Printf("→ Detectado MAC: %s para %s", macAddress, submission.Name)
+
+	// Verifica se o dispositivo já existe, senão cria
+	device, err := s.storage.GetDevice(macAddress)
+	if err != nil {
+		log.Printf("Erro ao buscar dispositivo: %v", err)
+	}
+
+	if device == nil {
+		// Cria dispositivo básico
+		device = &models.Device{
+			MACAddress: macAddress,
+			Type:       "smartphone", // Assume smartphone por padrão
+			Vendor:     "unknown",
+			FirstSeen:  time.Now(),
+			LastSeen:   time.Now(),
+			IsActive:   true,
+		}
+		if err := s.storage.SaveDevice(device); err != nil {
+			log.Printf("Erro ao criar dispositivo: %v", err)
+		}
+	}
+
+	// Cria colaborador
+	employee := &models.Employee{
+		MACAddress:       macAddress,
+		Name:             submission.Name,
+		Department:       submission.Department,
+		CustomDeviceType: submission.CustomDeviceType,
+		CustomVendor:     submission.CustomVendor,
+	}
+
+	if err := s.storage.SaveEmployee(employee); err != nil {
+		log.Printf("Erro ao salvar colaborador: %v", err)
+		http.Error(w, "Erro ao cadastrar colaborador", http.StatusInternalServerError)
+		return
+	}
+
+	// Marca token como usado
+	if err := s.storage.MarkTokenAsUsed(submission.Token); err != nil {
+		log.Printf("Erro ao marcar token como usado: %v", err)
+	}
+
+	log.Printf("✓ Colaborador cadastrado via QR Code: %s (%s) - MAC: %s",
+		submission.Name, submission.Department, macAddress)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"success":     true,
+		"message":     "Cadastro realizado com sucesso!",
+		"name":        submission.Name,
+		"mac_address": macAddress,
+	})
+}
+
+// handleRegistrationPage serve a página HTML de registro mobile
+func (s *Server) handleRegistrationPage(w http.ResponseWriter, r *http.Request) {
+	w.Header().Set("Content-Type", "text/html; charset=utf-8")
+	http.ServeFile(w, r, "web/register.html")
+}
+
+// getServerIP obtém o IP local do servidor da requisição
+func (s *Server) getServerIP(r *http.Request) string {
+	// Primeiro tenta pegar o IP real da interface de rede
+	addrs, err := net.InterfaceAddrs()
+	if err == nil {
+		for _, addr := range addrs {
+			if ipnet, ok := addr.(*net.IPNet); ok && !ipnet.IP.IsLoopback() {
+				if ipnet.IP.To4() != nil {
+					return fmt.Sprintf("%s:8080", ipnet.IP.String())
+				}
+			}
+		}
+	}
+
+	// Se não conseguiu, tenta usar o Host da requisição
+	host := r.Host
+	if host != "" && !strings.HasPrefix(host, "localhost") && !strings.HasPrefix(host, "127.0.0.1") {
+		return host
+	}
+
+	// Último fallback
+	return "localhost:8080"
+}
+
+// getMACFromRequest tenta extrair MAC do header X-MAC-Address (se enviado pelo cliente)
+func (s *Server) getMACFromRequest(r *http.Request) string {
+	return r.Header.Get("X-MAC-Address")
+}
+
+// getMACFromIP tenta descobrir MAC a partir do IP (consulta ARP)
+func (s *Server) getMACFromIP(remoteAddr string) string {
+	// Remove porta do endereço
+	ip := remoteAddr
+	if idx := strings.LastIndex(ip, ":"); idx != -1 {
+		ip = ip[:idx]
+	}
+
+	// Remove colchetes de IPv6
+	ip = strings.Trim(ip, "[]")
+
+	// Ignora localhost
+	if ip == "127.0.0.1" || ip == "::1" || ip == "localhost" {
+		return ""
+	}
+
+	log.Printf("→ Tentando detectar MAC do IP: %s", ip)
+
+	// Tenta consultar a tabela ARP do sistema (macOS/Linux)
+	// Executa: arp -n <ip>
+	cmd := fmt.Sprintf("arp -n %s", ip)
+	output, err := execCommand(cmd)
+	if err == nil {
+		// Parse da saída do ARP
+		// Formato macOS: ? (192.168.1.100) at aa:bb:cc:dd:ee:ff on en0 ifscope [ethernet]
+		// Formato Linux: 192.168.1.100 ether aa:bb:cc:dd:ee:ff C eth0
+		lines := strings.Split(output, "\n")
+		for _, line := range lines {
+			// Procura por padrão MAC (XX:XX:XX:XX:XX:XX)
+			fields := strings.Fields(line)
+			for _, field := range fields {
+				if len(field) == 17 && strings.Count(field, ":") == 5 {
+					// Valida se é um MAC válido
+					if isValidMAC(field) {
+						log.Printf("✓ MAC detectado via ARP: %s", field)
+						return field
+					}
+				}
+			}
+		}
+	}
+
+	log.Printf("⚠️  Não foi possível detectar MAC via ARP para IP %s", ip)
+
+	// Fallback: consulta dispositivos recentes (menos confiável)
+	devices, err := s.storage.GetAllDevices()
+	if err != nil {
+		log.Printf("Erro ao buscar devices: %v", err)
+		return ""
+	}
+
+	// Retorna o device mais recentemente visto e ativo
+	var mostRecent *models.Device
+	for _, d := range devices {
+		if d.IsActive {
+			if mostRecent == nil || d.LastSeen.After(mostRecent.LastSeen) {
+				mostRecent = &d
+			}
+		}
+	}
+
+	if mostRecent != nil {
+		log.Printf("→ Usando fallback: MAC do dispositivo ativo mais recente: %s", mostRecent.MACAddress)
+		return mostRecent.MACAddress
+	}
+
+	return ""
+}
+
+// execCommand executa um comando shell e retorna a saída
+func execCommand(cmd string) (string, error) {
+	parts := strings.Fields(cmd)
+	if len(parts) == 0 {
+		return "", fmt.Errorf("comando vazio")
+	}
+
+	out, err := exec.Command(parts[0], parts[1:]...).Output()
+	if err != nil {
+		return "", err
+	}
+	return string(out), nil
+}
+
+// isValidMAC verifica se uma string é um MAC address válido
+func isValidMAC(mac string) bool {
+	parts := strings.Split(mac, ":")
+	if len(parts) != 6 {
+		return false
+	}
+	for _, part := range parts {
+		if len(part) != 2 {
+			return false
+		}
+		// Verifica se é hexadecimal
+		for _, c := range part {
+			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+				return false
+			}
+		}
+	}
+	return true
 }

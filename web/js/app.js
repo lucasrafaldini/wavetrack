@@ -598,3 +598,92 @@ document.getElementById('associateForm').addEventListener('submit', async (e) =>
         alert('Erro ao salvar colaborador');
     }
 });
+
+// ============================================
+// QR CODE REGISTRATION
+// ============================================
+
+let currentQRUrl = '';
+
+async function openQRCodeModal() {
+    const modal = document.getElementById('qrModal');
+    const loading = document.getElementById('qrLoading');
+    const content = document.getElementById('qrContent');
+    const error = document.getElementById('qrError');
+    
+    // Reset estado
+    loading.style.display = 'block';
+    content.style.display = 'none';
+    error.style.display = 'none';
+    
+    modal.style.display = 'flex';
+    
+    try {
+        const response = await fetch('/api/register/token', {
+            method: 'POST'
+        });
+        
+        if (!response.ok) {
+            throw new Error('Erro ao gerar QR Code');
+        }
+        
+        const data = await response.json();
+        console.log('Dados recebidos:', data);
+        
+        // Exibe o QR Code (já vem com o prefixo data:image/png;base64,)
+        document.getElementById('qrCodeImage').src = data.qr_code;
+        currentQRUrl = data.url;
+        
+        console.log('QR Code URL:', currentQRUrl);
+        
+        // Calcula tempo de expiração
+        const expiresAt = new Date(data.expires_at);
+        const now = new Date();
+        const hoursRemaining = Math.ceil((expiresAt - now) / (1000 * 60 * 60));
+        document.getElementById('qrExpiration').textContent = `${hoursRemaining} hora(s)`;
+        
+        loading.style.display = 'none';
+        content.style.display = 'block';
+        
+    } catch (err) {
+        console.error('Erro ao gerar QR Code:', err);
+        loading.style.display = 'none';
+        error.style.display = 'block';
+        document.getElementById('qrErrorMessage').textContent = 
+            'Erro ao gerar QR Code. Tente novamente.';
+    }
+}
+
+function closeQRModal() {
+    document.getElementById('qrModal').style.display = 'none';
+    currentQRUrl = '';
+}
+
+async function copyQRLink() {
+    if (!currentQRUrl) {
+        alert('❌ Nenhum link disponível');
+        return;
+    }
+    
+    try {
+        await navigator.clipboard.writeText(currentQRUrl);
+        alert('✓ Link copiado para a área de transferência!');
+    } catch (err) {
+        // Fallback para navegadores antigos
+        const input = document.createElement('input');
+        input.value = currentQRUrl;
+        document.body.appendChild(input);
+        input.select();
+        document.execCommand('copy');
+        document.body.removeChild(input);
+        alert('✓ Link copiado para a área de transferência!');
+    }
+}
+
+// Fecha modal ao clicar fora
+window.onclick = function(event) {
+    const qrModal = document.getElementById('qrModal');
+    if (event.target == qrModal) {
+        closeQRModal();
+    }
+}
