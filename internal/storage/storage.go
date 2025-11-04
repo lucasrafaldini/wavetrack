@@ -4,6 +4,7 @@ import (
 	"database/sql"
 	_ "embed"
 	"fmt"
+	"log"
 	"path/filepath"
 	"time"
 
@@ -953,4 +954,125 @@ func (s *Storage) CleanExpiredTokens() error {
 	query := `DELETE FROM registration_tokens WHERE expires_at < CURRENT_TIMESTAMP`
 	_, err := s.db.Exec(query)
 	return err
+}
+
+// === CLEANUP FUNCTIONS ===
+
+// CleanupUnregisteredDevices remove dispositivos não cadastrados inativos há mais de X dias
+func (s *Storage) CleanupUnregisteredDevices(daysOld int) (int, error) {
+	// PASSO 1: Atualiza o campo is_active no banco baseado no timeout (20 minutos padrão)
+	updateQuery := `
+		UPDATE devices 
+		SET is_active = 0 
+		WHERE datetime(last_seen) < datetime('now', '-20 minutes')
+	`
+	s.db.Exec(updateQuery)
+	log.Printf("🔄 Status de dispositivos atualizado baseado em last_seen")
+
+	// PASSO 2: Remove dispositivos que:
+	// 1. Não estão na tabela employees (não cadastrados)
+	// 2. Estão inativos (is_active = 0)
+	// 3. Se daysOld > 0, considera também o tempo desde last_seen
+	var query string
+	var result sql.Result
+	var err error
+
+	// Debug: verifica quantos dispositivos inativos sem cadastro existem
+	var countBefore int
+	debugQuery := `
+		SELECT COUNT(*) FROM devices 
+		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
+		  AND is_active = 0
+	`
+	s.db.QueryRow(debugQuery).Scan(&countBefore)
+	log.Printf("🔍 DEBUG: Dispositivos inativos sem cadastro antes da limpeza: %d", countBefore)
+
+	if daysOld == 0 {
+		// Remove TODOS os dispositivos inativos sem cadastro, independente do tempo
+		query = `
+		DELETE FROM devices 
+		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
+		  AND is_active = 0
+		`
+		log.Printf("🧹 Executando limpeza: removendo TODOS os inativos sem cadastro")
+		result, err = s.db.Exec(query)
+	} else {
+		// Remove dispositivos inativos há mais de X dias
+		query = `
+		DELETE FROM devices 
+		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
+		  AND is_active = 0
+		  AND last_seen < datetime('now', '-' || ? || ' days')
+		`
+		log.Printf("🧹 Executando limpeza: removendo inativos há mais de %d dias", daysOld)
+		result, err = s.db.Exec(query, daysOld)
+	}
+
+	if err != nil {
+		return 0, fmt.Errorf("erro ao limpar dispositivos não cadastrados: %v", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("erro ao obter dispositivos removidos: %v", err)
+	}
+
+	log.Printf("✅ Dispositivos removidos: %d", int(affected))
+	return int(affected), nil
+}
+
+// CleanupOldEvents remove eventos antigos (mantém apenas os últimos X dias)
+func (s *Storage) CleanupOldEvents(daysToKeep int) (int, error) {
+	// Remove apenas eventos de unknown_device antigos
+	// Mantém eventos de funcionários cadastrados
+	query := `
+	DELETE FROM events 
+	WHERE event_type = 'unknown_device'
+	  AND timestamp < datetime('now', '-' || ? || ' days')
+	  AND mac_address NOT IN (SELECT mac_address FROM employees)
+	`
+
+	result, err := s.db.Exec(query, daysToKeep)
+	if err != nil {
+		return 0, fmt.Errorf("erro ao limpar eventos antigos: %v", err)
+	}
+
+	affected, err := result.RowsAffected()
+	if err != nil {
+		return 0, fmt.Errorf("erro ao obter eventos removidos: %v", err)
+	}
+
+	return int(affected), nil
+}
+
+// GetUnregisteredDevicesCount retorna a quantidade de dispositivos não cadastrados
+func (s *Storage) GetUnregisteredDevicesCount() (total, inactive int, err error) {
+	// Primeiro, atualiza o campo is_active baseado no timeout
+	updateQuery := `
+		UPDATE devices 
+		SET is_active = 0 
+		WHERE datetime(last_seen) < datetime('now', '-20 minutes')
+	`
+	s.db.Exec(updateQuery)
+
+	// Total de dispositivos não cadastrados
+	err = s.db.QueryRow(`
+		SELECT COUNT(*) FROM devices 
+		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
+	`).Scan(&total)
+	if err != nil {
+		return 0, 0, fmt.Errorf("erro ao contar dispositivos não cadastrados: %v", err)
+	}
+
+	// Dispositivos não cadastrados inativos (baseado no campo is_active do banco)
+	err = s.db.QueryRow(`
+		SELECT COUNT(*) FROM devices 
+		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
+		  AND is_active = 0
+	`).Scan(&inactive)
+	if err != nil {
+		return 0, 0, fmt.Errorf("erro ao contar dispositivos inativos: %v", err)
+	}
+
+	return total, inactive, nil
 }

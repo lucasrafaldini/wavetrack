@@ -104,6 +104,40 @@ th {
     letter-spacing: 1px;
 }
 
+th.sortable {
+    cursor: pointer;
+    user-select: none;
+    transition: background-color 0.2s;
+}
+
+th.sortable:hover {
+    background: #e9ecef;
+}
+
+.sort-icon {
+    display: inline-block;
+    margin-left: 6px;
+    font-size: 0.75em;
+    color: #999;
+    transition: color 0.2s;
+    vertical-align: middle;
+    width: 12px;
+    text-align: center;
+}
+
+.sort-icon:empty::before {
+    content: '↕';
+}
+
+th.sortable:hover .sort-icon {
+    color: #667eea;
+}
+
+th.sortable.active .sort-icon {
+    color: #667eea;
+    font-weight: bold;
+}
+
 tr:hover {
     background: #f8f9fa;
 }

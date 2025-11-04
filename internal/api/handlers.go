@@ -71,6 +71,7 @@ func (s *Server) SetupRoutes() http.Handler {
 	mux.HandleFunc("/api/events", s.handleEvents)
 	mux.HandleFunc("/api/report/today", s.handleReportToday)
 	mux.HandleFunc("/api/history/7days", s.handleHistory7Days)
+	mux.HandleFunc("/api/cleanup/inactive", s.handleCleanupInactive)
 
 	// Registration via QR Code
 	mux.HandleFunc("/api/register/token", s.handleGenerateQRCode)
@@ -531,6 +532,69 @@ func (s *Server) enableCORS(handler http.Handler) http.Handler {
 
 		handler.ServeHTTP(w, r)
 	})
+}
+
+// handleCleanupInactive remove dispositivos inativos sem cadastro de colaborador
+func (s *Server) handleCleanupInactive(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Método não permitido", http.StatusMethodNotAllowed)
+		return
+	}
+
+	log.Println("🧹 Limpeza manual iniciada via API...")
+
+	// 1. Conta dispositivos não cadastrados antes da limpeza
+	totalBefore, inactiveBefore, err := s.storage.GetUnregisteredDevicesCount()
+	if err != nil {
+		log.Printf("❌ Erro ao contar dispositivos: %v", err)
+		http.Error(w, "Erro ao contar dispositivos", http.StatusInternalServerError)
+		return
+	}
+
+	// 2. Remove dispositivos não cadastrados inativos IMEDIATAMENTE (sem espera)
+	removedDevices, err := s.storage.CleanupUnregisteredDevices(0)
+	if err != nil {
+		log.Printf("❌ Erro na limpeza de dispositivos: %v", err)
+		http.Error(w, "Erro na limpeza de dispositivos", http.StatusInternalServerError)
+		return
+	}
+
+	// 3. Remove eventos antigos (mantém últimos 30 dias)
+	removedEvents, err := s.storage.CleanupOldEvents(30)
+	if err != nil {
+		log.Printf("❌ Erro na limpeza de eventos: %v", err)
+		http.Error(w, "Erro na limpeza de eventos", http.StatusInternalServerError)
+		return
+	}
+
+	// 4. Relatório final
+	totalAfter, inactiveAfter, err := s.storage.GetUnregisteredDevicesCount()
+	if err != nil {
+		log.Printf("❌ Erro ao contar dispositivos finais: %v", err)
+		http.Error(w, "Erro ao contar dispositivos", http.StatusInternalServerError)
+		return
+	}
+
+	log.Printf("✅ Limpeza manual concluída:")
+	log.Printf("   📱 Dispositivos removidos: %d", removedDevices)
+	log.Printf("   📋 Eventos removidos: %d", removedEvents)
+	log.Printf("   📊 Dispositivos não cadastrados: %d → %d", totalBefore, totalAfter)
+	log.Printf("   😴 Dispositivos inativos: %d → %d", inactiveBefore, inactiveAfter)
+
+	// Retorna resposta
+	response := map[string]interface{}{
+		"success":         true,
+		"removed_devices": removedDevices,
+		"removed_events":  removedEvents,
+		"total_before":    totalBefore,
+		"total_after":     totalAfter,
+		"inactive_before": inactiveBefore,
+		"inactive_after":  inactiveAfter,
+		"message":         fmt.Sprintf("Limpeza concluída: %d dispositivos e %d eventos removidos", removedDevices, removedEvents),
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(response)
 }
 
 // === REGISTRATION VIA QR CODE ===

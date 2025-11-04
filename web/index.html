@@ -75,36 +75,29 @@
                 <div id="tab-current" class="tab-content active">
                     <h2>🔍 Dispositivos Conectados</h2>
                     <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap: wrap;">
-                        <label style="font-weight:600; color:#333;">Ordenar por</label>
-                        <select id="sortField" style="max-width:220px;">
-                            <option value="name">Nome do funcionário</option>
-                            <option value="arrival">Chegou às</option>
-                            <option value="duration">Tempo online</option>
-                        </select>
-                        <select id="sortDir" style="max-width:160px;">
-                            <option value="asc">Ascendente</option>
-                            <option value="desc">Descendente</option>
-                        </select>
-                        <label style="display:flex; align-items:center; gap:8px; margin-left:auto;">
+                        <label style="display:flex; align-items:center; gap:8px;">
                             <input type="checkbox" id="onlyEmployees" /> Somente funcionários
                         </label>
-                        <button class="btn btn-success" onclick="downloadReport()" style="margin-left:10px;">
+                        <button class="btn btn-success" onclick="downloadReport()" style="margin-left:auto;">
                             📊 Relatório Hoje
+                        </button>
+                        <button class="btn btn-danger" onclick="cleanupInactive()">
+                            🗑️ Eliminar inativos
                         </button>
                     </div>
                     <div id="devicesTableContainer">
                         <table id="devicesTable">
                             <thead>
                                 <tr>
-                                    <th>Status</th>
+                                    <th class="sortable" onclick="sortTable('status')">Status<span id="sort-status" class="sort-icon"></span></th>
                                     <th>MAC Address</th>
                                     <th>Tipo</th>
                                     <th>Fabricante</th>
-                                    <th>Funcionário</th>
-                                    <th>Chegou às</th>
+                                    <th class="sortable" onclick="sortTable('name')">Funcionário<span id="sort-name" class="sort-icon"></span></th>
+                                    <th class="sortable" onclick="sortTable('arrival')">Chegada<span id="sort-arrival" class="sort-icon"></span></th>
                                     <th>Sinal / Canal</th>
-                                    <th>Tempo online</th>
-                                    <th>Último Visto</th>
+                                    <th class="sortable" onclick="sortTable('duration')">Tempo online<span id="sort-duration" class="sort-icon"></span></th>
+                                    <th class="sortable" onclick="sortTable('lastseen')">Última atividade<span id="sort-lastseen" class="sort-icon"></span></th>
                                     <th>Ação</th>
                                 </tr>
                             </thead>
@@ -287,6 +280,6 @@
         ↻
     </button>
 
-    <script src="js/app.js?v=4"></script>
+    <script src="js/app.js?v=7"></script>
 </body>
 </html>

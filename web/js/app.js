@@ -9,6 +9,11 @@ let historyData = [];
 // Carrega dados iniciais
 loadData();
 
+// Inicializa ícones de ordenação
+setTimeout(() => {
+    updateSortIcons();
+}, 100);
+
 // Atualiza automaticamente a cada 5 segundos (apenas aba atual)
 setInterval(() => {
     if (currentTab === 'current') {
@@ -181,7 +186,10 @@ function renderDevices() {
 
 function compareDevices(a, b) {
     let result = 0;
-    if (sortField === 'name') {
+    if (sortField === 'status') {
+        // Ordena: Ativo antes de Inativo
+        result = (b.is_active ? 1 : 0) - (a.is_active ? 1 : 0);
+    } else if (sortField === 'name') {
         const an = (a.employee_name || '').toLowerCase();
         const bn = (b.employee_name || '').toLowerCase();
         result = an.localeCompare(bn);
@@ -193,6 +201,10 @@ function compareDevices(a, b) {
         const ad = a.online_duration_seconds || 0;
         const bd = b.online_duration_seconds || 0;
         result = ad - bd;
+    } else if (sortField === 'lastseen') {
+        const at = a.last_seen ? new Date(a.last_seen).getTime() : 0;
+        const bt = b.last_seen ? new Date(b.last_seen).getTime() : 0;
+        result = at - bt;
     }
     return sortDir === 'asc' ? result : -result;
 }
@@ -374,19 +386,47 @@ document.getElementById('associateModal').addEventListener('click', (e) => {
     }
 });
 
-// Controles de UI: ordenar e filtrar
-document.getElementById('sortField').addEventListener('change', (e) => {
-    sortField = e.target.value;
-    renderDevices();
-});
-document.getElementById('sortDir').addEventListener('change', (e) => {
-    sortDir = e.target.value;
-    renderDevices();
-});
+// Controles de UI: filtrar
 document.getElementById('onlyEmployees').addEventListener('change', (e) => {
     onlyEmployees = e.target.checked;
     renderDevices();
 });
+
+// Função para ordenação por coluna
+function sortTable(field) {
+    // Se clicar na mesma coluna, inverte a direção
+    if (sortField === field) {
+        sortDir = sortDir === 'asc' ? 'desc' : 'asc';
+    } else {
+        // Nova coluna, começa ascendente
+        sortField = field;
+        sortDir = 'asc';
+    }
+    
+    // Atualiza ícones
+    updateSortIcons();
+    
+    // Re-renderiza
+    renderDevices();
+}
+
+// Atualiza os ícones de ordenação
+function updateSortIcons() {
+    // Remove classe active de todos
+    document.querySelectorAll('th.sortable').forEach(th => th.classList.remove('active'));
+    
+    // Reseta todos os ícones (deixa vazio para o CSS usar ::before)
+    document.querySelectorAll('.sort-icon').forEach(icon => {
+        icon.textContent = '';
+    });
+    
+    // Atualiza o ícone da coluna ativa
+    const icon = document.getElementById(`sort-${sortField}`);
+    if (icon) {
+        icon.closest('th').classList.add('active');
+        icon.textContent = sortDir === 'asc' ? '↑' : '↓';
+    }
+}
 
 // Download relatório do dia
 async function downloadReport() {
@@ -407,6 +447,33 @@ async function downloadReport() {
     } catch (error) {
         console.error('Erro ao baixar relatório:', error);
         alert('Erro ao gerar relatório');
+    }
+}
+
+// Limpa dispositivos inativos sem cadastro
+async function cleanupInactive() {
+    if (!confirm('⚠️ Tem certeza? Isso irá remover todos os dispositivos inativos sem cadastro de colaborador.\n\nEsta ação não pode ser desfeita!')) {
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/cleanup/inactive', {
+            method: 'POST'
+        });
+
+        if (!response.ok) {
+            throw new Error('Erro na limpeza');
+        }
+
+        const result = await response.json();
+        
+        alert(`✅ Limpeza concluída!\n\n📱 Dispositivos removidos: ${result.removed_devices}\n📋 Eventos removidos: ${result.removed_events}\n\nDispositivos não cadastrados: ${result.total_before} → ${result.total_after}`);
+        
+        // Atualiza a interface
+        loadData();
+    } catch (error) {
+        console.error('Erro na limpeza:', error);
+        alert('❌ Erro ao executar limpeza. Tente novamente.');
     }
 }
 
