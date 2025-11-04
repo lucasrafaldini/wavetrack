@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/lucasrafaldini/wavetrack/internal/api"
 	"github.com/lucasrafaldini/wavetrack/internal/config"
@@ -60,6 +61,9 @@ func main() {
 	presenceTracker := tracker.NewPresenceTracker(cfg, scanner, eventLogger, dataStorage)
 	presenceTracker.Start()
 
+	// Inicia scheduler de limpeza automática
+	go startCleanupScheduler(dataStorage)
+
 	// Inicializa o servidor web
 	apiServer := api.NewServer(dataStorage, cfg)
 	go func() {
@@ -81,4 +85,64 @@ func main() {
 
 	log.Println("\nEncerrando WaveTrack...")
 	log.Println("Sistema finalizado com sucesso!")
+}
+
+// startCleanupScheduler inicia o agendador de limpeza automática
+func startCleanupScheduler(storage *storage.Storage) {
+	// Executa limpeza a cada 24 horas
+	ticker := time.NewTicker(24 * time.Hour)
+	defer ticker.Stop()
+
+	// Executa limpeza inicial após 1 hora de funcionamento
+	time.Sleep(1 * time.Hour)
+	runCleanup(storage)
+
+	// Loop principal do scheduler
+	for range ticker.C {
+		runCleanup(storage)
+	}
+}
+
+// runCleanup executa a limpeza de dispositivos e eventos antigos
+func runCleanup(storage *storage.Storage) {
+	log.Println("🧹 Iniciando limpeza automática...")
+
+	// 1. Conta dispositivos não cadastrados antes da limpeza
+	totalBefore, inactiveBefore, err := storage.GetUnregisteredDevicesCount()
+	if err != nil {
+		log.Printf("❌ Erro ao contar dispositivos: %v", err)
+		return
+	}
+
+	// 2. Remove dispositivos não cadastrados inativos há mais de 7 dias
+	removedDevices, err := storage.CleanupUnregisteredDevices(7)
+	if err != nil {
+		log.Printf("❌ Erro na limpeza de dispositivos: %v", err)
+		return
+	}
+
+	// 3. Remove eventos antigos (mantém últimos 30 dias)
+	removedEvents, err := storage.CleanupOldEvents(30)
+	if err != nil {
+		log.Printf("❌ Erro na limpeza de eventos: %v", err)
+		return
+	}
+
+	// 4. Relatório final
+	totalAfter, inactiveAfter, err := storage.GetUnregisteredDevicesCount()
+	if err != nil {
+		log.Printf("❌ Erro ao contar dispositivos finais: %v", err)
+		return
+	}
+
+	log.Printf("✅ Limpeza concluída:")
+	log.Printf("   📱 Dispositivos removidos: %d", removedDevices)
+	log.Printf("   📋 Eventos removidos: %d", removedEvents)
+	log.Printf("   📊 Dispositivos não cadastrados: %d → %d", totalBefore, totalAfter)
+	log.Printf("   😴 Dispositivos inativos: %d → %d", inactiveBefore, inactiveAfter)
+
+	if removedDevices > 0 || removedEvents > 0 {
+		log.Printf("🎯 Base de dados otimizada - removidos %d dispositivos e %d eventos antigos",
+			removedDevices, removedEvents)
+	}
 }

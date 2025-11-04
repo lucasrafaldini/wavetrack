@@ -3,8 +3,9 @@
 # Interface de rede para monitoramento
 # macOS: en0 (geralmente), Linux: wlan0
 network:
-  interface: "en0"
-  channel: 6
+  interface: "wlx90de80810b7f" # Exemplo com adaptador USB antena Wi-Fi
+  # interface: "en0"  # Exemplo para macOS
+  # interface: "wlan0"  # Exemplo para Linux
   scan_interval: 10  # segundos
 
 # Configuração de logs

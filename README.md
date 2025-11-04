@@ -454,6 +454,22 @@ Os eventos são salvos em formato JSON rotacionado diariamente (`logs/presence_Y
 - [x] Organização de código (HTML, CSS, JS separados)
 
 ### 🔄 Próximas Funcionalidades
+
+#### v2.0 - Sistema de Identificação Avançado (Q1 2026)
+- [ ] **🔍 Biblioteca própria para consulta MAC Address** ⭐ *Prioridade Alta*
+  - Substituir base OUI hardcoded por sistema dinâmico
+  - Carregamento automático da base IEEE OUI atualizada
+  - Cache inteligente e múltiplas fontes de dados
+  - API para atualizações automáticas da base de fabricantes
+- [ ] Machine Learning para classificação inteligente de dispositivos
+- [ ] Análise de padrões de comportamento de rede
+
+#### v2.1 - Interface e UX
+- [ ] Interface web responsiva (mobile-first)
+- [ ] Dashboard em tempo real aprimorado com gráficos interativos
+- [ ] Sistema de notificações push
+
+#### Funcionalidades Planejadas
 - [ ] Relatório diário de presença (PDF/CSV)
 - [ ] Notificações por webhook
 - [ ] Suporte a múltiplos dispositivos por funcionário
@@ -466,6 +482,8 @@ Os eventos são salvos em formato JSON rotacionado diariamente (`logs/presence_Y
 - [ ] Aplicativo mobile
 - [ ] API de webhooks para eventos
 - [ ] Integração com sistemas de RH
+
+> 📋 **Roadmap Completo**: Veja o [ROADMAP.md](ROADMAP.md) para detalhes técnicos e cronograma completo
 
 ## 📝 Licença
 

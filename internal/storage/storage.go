@@ -3,6 +3,7 @@ package storage
 import (
 	"database/sql"
 	_ "embed"
+	"encoding/json"
 	"fmt"
 	"log"
 	"path/filepath"
@@ -175,9 +176,16 @@ func (s *Storage) GetOnlineDurationToday(macAddress string, now time.Time) (time
 
 // SaveDevice salva ou atualiza um dispositivo
 func (s *Storage) SaveDevice(device *models.Device) error {
+	// Converte PossibleTypes para JSON
+	var possibleTypesJSON string
+	if len(device.PossibleTypes) > 0 {
+		bytes, _ := json.Marshal(device.PossibleTypes)
+		possibleTypesJSON = string(bytes)
+	}
+
 	query := `
-		INSERT INTO devices (mac_address, vendor, type, first_seen, last_seen, signal_strength, frequency, channel, is_active)
-		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		INSERT INTO devices (mac_address, vendor, type, first_seen, last_seen, signal_strength, frequency, channel, is_active, is_ambiguous, possible_types)
+		VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
 		ON CONFLICT(mac_address) DO UPDATE SET
 			vendor = excluded.vendor,
 			type = excluded.type,
@@ -185,7 +193,9 @@ func (s *Storage) SaveDevice(device *models.Device) error {
 			signal_strength = excluded.signal_strength,
 			frequency = excluded.frequency,
 			channel = excluded.channel,
-			is_active = excluded.is_active
+			is_active = excluded.is_active,
+			is_ambiguous = excluded.is_ambiguous,
+			possible_types = excluded.possible_types
 	`
 
 	_, err := s.db.Exec(query,
@@ -198,6 +208,8 @@ func (s *Storage) SaveDevice(device *models.Device) error {
 		device.Frequency,
 		device.Channel,
 		device.IsActive,
+		device.IsAmbiguous,
+		possibleTypesJSON,
 	)
 
 	return err
@@ -237,7 +249,7 @@ func (s *Storage) GetDevice(macAddress string) (*models.Device, error) {
 // GetAllDevices retorna todos os dispositivos
 func (s *Storage) GetAllDevices() ([]models.Device, error) {
 	query := `
-		SELECT mac_address, vendor, type, first_seen, last_seen, signal_strength, frequency, channel, is_active
+		SELECT mac_address, vendor, type, first_seen, last_seen, signal_strength, frequency, channel, is_active, is_ambiguous, possible_types
 		FROM devices
 		ORDER BY last_seen DESC
 	`
@@ -251,6 +263,8 @@ func (s *Storage) GetAllDevices() ([]models.Device, error) {
 	var devices []models.Device
 	for rows.Next() {
 		var device models.Device
+		var possibleTypesJSON sql.NullString
+
 		err := rows.Scan(
 			&device.MACAddress,
 			&device.Vendor,
@@ -261,10 +275,18 @@ func (s *Storage) GetAllDevices() ([]models.Device, error) {
 			&device.Frequency,
 			&device.Channel,
 			&device.IsActive,
+			&device.IsAmbiguous,
+			&possibleTypesJSON,
 		)
 		if err != nil {
 			return nil, err
 		}
+
+		// Deserializa PossibleTypes do JSON
+		if possibleTypesJSON.Valid && possibleTypesJSON.String != "" {
+			json.Unmarshal([]byte(possibleTypesJSON.String), &device.PossibleTypes)
+		}
+
 		devices = append(devices, device)
 	}
 
@@ -1018,8 +1040,6 @@ func (s *Storage) CleanupUnregisteredDevices(daysOld int) (int, error) {
 	}
 
 	log.Printf("✅ Dispositivos removidos: %d", int(affected))
-	return int(affected), nil
-}
 
 // CleanupOldEvents remove eventos antigos (mantém apenas os últimos X dias)
 func (s *Storage) CleanupOldEvents(daysToKeep int) (int, error) {

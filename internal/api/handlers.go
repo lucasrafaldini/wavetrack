@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"github.com/lucasrafaldini/wavetrack/internal/config"
+	"github.com/lucasrafaldini/wavetrack/internal/deviceid"
 	"github.com/lucasrafaldini/wavetrack/internal/models"
 	"github.com/lucasrafaldini/wavetrack/internal/storage"
 	qrcode "github.com/skip2/go-qrcode"
@@ -42,6 +43,8 @@ type DeviceResponse struct {
 	FirstSeen      time.Time  `json:"first_seen"`
 	LastSeen       time.Time  `json:"last_seen"`
 	IsActive       bool       `json:"is_active"`
+	IsAmbiguous    bool       `json:"is_ambiguous"`   // true se o fabricante faz múltiplos tipos
+	PossibleTypes  []string   `json:"possible_types"` // tipos possíveis quando ambíguo
 	EmployeeName   string     `json:"employee_name,omitempty"`
 	Department     string     `json:"department,omitempty"`
 	FirstSeenToday *time.Time `json:"first_seen_today,omitempty"`
@@ -56,6 +59,16 @@ type AssociateDeviceRequest struct {
 	Department       string `json:"department"`
 	CustomDeviceType string `json:"custom_device_type,omitempty"`
 	CustomVendor     string `json:"custom_vendor,omitempty"`
+}
+
+// DeviceVendorDetailRequest representa uma requisição para detalhes do vendor
+type DeviceVendorDetailRequest struct {
+	MACAddress string `json:"mac_address"`
+}
+
+// VendorSearchRequest representa uma requisição para buscar vendors
+type VendorSearchRequest struct {
+	Pattern string `json:"pattern"`
 }
 
 // SetupRoutes configura as rotas da API
@@ -78,6 +91,7 @@ func (s *Server) SetupRoutes() http.Handler {
 	mux.HandleFunc("/api/register/validate/", s.handleValidateToken)
 	mux.HandleFunc("/api/register/submit", s.handleRegistrationSubmit)
 	mux.HandleFunc("/register/", s.handleRegistrationPage)
+
 
 	// Serve arquivos estáticos (interface web)
 	mux.Handle("/", http.FileServer(http.Dir("web")))
@@ -124,6 +138,8 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 			FirstSeen:      device.FirstSeen,
 			LastSeen:       device.LastSeen,
 			IsActive:       device.IsActive && now.Sub(device.LastSeen) < offlineThreshold,
+			IsAmbiguous:    device.IsAmbiguous,
+			PossibleTypes:  device.PossibleTypes,
 		}
 
 		if employee != nil {
@@ -516,6 +532,107 @@ func (s *Server) handleHistory7Days(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(history)
+}
+
+// GetDeviceVendorDetails retorna informações detalhadas do vendor via OUIja
+func (s *Server) GetDeviceVendorDetails(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req DeviceVendorDetailRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.MACAddress == "" {
+		http.Error(w, "MAC address is required", http.StatusBadRequest)
+		return
+	}
+
+	// Utiliza a nova função que integra com OUIja
+	details, err := deviceid.GetDetailedVendorInfo(req.MACAddress)
+	if err != nil {
+		log.Printf("Erro ao buscar detalhes do vendor para %s: %v", req.MACAddress, err)
+		http.Error(w, "Vendor not found", http.StatusNotFound)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(details)
+}
+
+// SearchVendorsByPattern busca vendors por padrão usando OUIja
+func (s *Server) SearchVendorsByPattern(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	var req VendorSearchRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		http.Error(w, "Invalid JSON", http.StatusBadRequest)
+		return
+	}
+
+	if req.Pattern == "" {
+		http.Error(w, "Search pattern is required", http.StatusBadRequest)
+		return
+	}
+
+	// Utiliza a nova função que integra com OUIja
+	vendors, err := deviceid.SearchVendorsByPattern(req.Pattern)
+	if err != nil {
+		log.Printf("Erro ao buscar vendors com padrão %s: %v", req.Pattern, err)
+		http.Error(w, "Search failed", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"pattern": req.Pattern,
+		"vendors": vendors,
+		"count":   len(vendors),
+	})
+}
+
+// GetTopVendors retorna os principais vendors por número de OUIs
+func (s *Server) GetTopVendors(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	// Por padrão retorna top 20, pode ser parametrizado futuramente
+	limit := 20
+	vendors := deviceid.GetTopVendors(limit)
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]interface{}{
+		"top_vendors": vendors,
+		"limit":       limit,
+		"count":       len(vendors),
+	})
+}
+
+// GetDatabaseStats retorna estatísticas da base de dados OUI
+func (s *Server) GetDatabaseStats(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodGet {
+		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
+		return
+	}
+
+	stats, err := deviceid.GetDatabaseStats()
+	if err != nil {
+		log.Printf("Erro ao obter estatísticas da base: %v", err)
+		http.Error(w, "Failed to get database stats", http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(stats)
 }
 
 // enableCORS adiciona headers CORS

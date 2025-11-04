@@ -10,7 +10,9 @@ CREATE TABLE IF NOT EXISTS devices (
     signal_strength INTEGER DEFAULT 0,
     frequency INTEGER DEFAULT 0,
     channel INTEGER DEFAULT 0,
-    is_active BOOLEAN DEFAULT 1
+    is_active BOOLEAN DEFAULT 1,
+    is_ambiguous BOOLEAN DEFAULT 0,
+    possible_types TEXT DEFAULT NULL -- JSON array dos tipos possíveis
 );
 
 -- Tabela de funcionários
@@ -42,6 +44,7 @@ CREATE TABLE IF NOT EXISTS events (
 -- Índices para performance
 CREATE INDEX IF NOT EXISTS idx_devices_last_seen ON devices(last_seen);
 CREATE INDEX IF NOT EXISTS idx_devices_active ON devices(is_active);
+CREATE INDEX IF NOT EXISTS idx_devices_ambiguous ON devices(is_ambiguous);
 CREATE INDEX IF NOT EXISTS idx_employees_mac ON employees(mac_address);
 CREATE INDEX IF NOT EXISTS idx_events_timestamp ON events(timestamp);
 CREATE INDEX IF NOT EXISTS idx_events_type ON events(event_type);
