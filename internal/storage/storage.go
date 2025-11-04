@@ -40,7 +40,9 @@ func NewStorage(dataDir string) (*Storage, error) {
 
 	// Inicializa schema
 	if err := storage.initSchema(); err != nil {
-		db.Close()
+		if closeErr := db.Close(); closeErr != nil {
+			return nil, fmt.Errorf("erro ao criar schema: %v (erro ao fechar: %v)", err, closeErr)
+		}
 		return nil, err
 	}
 
@@ -284,7 +286,9 @@ func (s *Storage) GetAllDevices() ([]models.Device, error) {
 
 		// Deserializa PossibleTypes do JSON
 		if possibleTypesJSON.Valid && possibleTypesJSON.String != "" {
-			json.Unmarshal([]byte(possibleTypesJSON.String), &device.PossibleTypes)
+			if err := json.Unmarshal([]byte(possibleTypesJSON.String), &device.PossibleTypes); err != nil {
+				log.Printf("Aviso: erro ao deserializar possible_types: %v", err)
+			}
 		}
 
 		devices = append(devices, device)
@@ -988,8 +992,11 @@ func (s *Storage) CleanupUnregisteredDevices(daysOld int) (int, error) {
 		SET is_active = 0 
 		WHERE datetime(last_seen) < datetime('now', '-20 minutes')
 	`
-	s.db.Exec(updateQuery)
-	log.Printf("🔄 Status de dispositivos atualizado baseado em last_seen")
+	if _, err := s.db.Exec(updateQuery); err != nil {
+		log.Printf("⚠️  Erro ao atualizar status: %v", err)
+	} else {
+		log.Printf("🔄 Status de dispositivos atualizado baseado em last_seen")
+	}
 
 	// PASSO 2: Remove dispositivos que:
 	// 1. Não estão na tabela employees (não cadastrados)
@@ -1006,7 +1013,9 @@ func (s *Storage) CleanupUnregisteredDevices(daysOld int) (int, error) {
 		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
 		  AND is_active = 0
 	`
-	s.db.QueryRow(debugQuery).Scan(&countBefore)
+	if err := s.db.QueryRow(debugQuery).Scan(&countBefore); err != nil {
+		log.Printf("⚠️  Erro ao contar dispositivos: %v", err)
+	}
 	log.Printf("🔍 DEBUG: Dispositivos inativos sem cadastro antes da limpeza: %d", countBefore)
 
 	if daysOld == 0 {
@@ -1075,7 +1084,9 @@ func (s *Storage) GetUnregisteredDevicesCount() (total, inactive int, err error)
 		SET is_active = 0 
 		WHERE datetime(last_seen) < datetime('now', '-20 minutes')
 	`
-	s.db.Exec(updateQuery)
+	if _, execErr := s.db.Exec(updateQuery); execErr != nil {
+		log.Printf("⚠️  Erro ao atualizar status: %v", execErr)
+	}
 
 	// Total de dispositivos não cadastrados
 	err = s.db.QueryRow(`

@@ -92,7 +92,6 @@ func (s *Server) SetupRoutes() http.Handler {
 	mux.HandleFunc("/api/register/submit", s.handleRegistrationSubmit)
 	mux.HandleFunc("/register/", s.handleRegistrationPage)
 
-
 	// Serve arquivos estáticos (interface web)
 	mux.Handle("/", http.FileServer(http.Dir("web")))
 
@@ -166,7 +165,9 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // handleEmployees retorna lista de funcionários cadastrados
@@ -184,7 +185,9 @@ func (s *Server) handleEmployees(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(employees)
+	if err := json.NewEncoder(w).Encode(employees); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // handleAssociate associa um dispositivo a um funcionário
@@ -296,9 +299,11 @@ func (s *Server) handleAssociate(w http.ResponseWriter, r *http.Request) {
 	log.Printf("✓ Funcionário cadastrado: %s (%s) - %s", req.Name, req.Department, req.MACAddress)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"message": "Funcionário cadastrado com sucesso",
-	})
+	}); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // handleEmployeeDelete deleta um funcionário
@@ -332,9 +337,11 @@ func (s *Server) handleEmployeeDelete(w http.ResponseWriter, r *http.Request) {
 	log.Printf("✓ Funcionário deletado: %s (%s) - Histórico preservado para relatórios", employee.Name, macAddress)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{
+	if err := json.NewEncoder(w).Encode(map[string]string{
 		"message": "Funcionário deletado com sucesso",
-	})
+	}); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // handleStats retorna estatísticas gerais
@@ -359,7 +366,9 @@ func (s *Server) handleStats(w http.ResponseWriter, r *http.Request) {
 	stats["offline_threshold_minutes"] = offlineThresholdMinutes
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // handleEvents retorna eventos recentes
@@ -378,7 +387,9 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(events)
+	if err := json.NewEncoder(w).Encode(events); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // EmployeeReportItem representa um item do relatório diário de um funcionário
@@ -446,7 +457,9 @@ func (s *Server) handleReportToday(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(report)
+	if err := json.NewEncoder(w).Encode(report); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // HistoryDay representa um dia no histórico
@@ -531,7 +544,9 @@ func (s *Server) handleHistory7Days(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(history)
+	if err := json.NewEncoder(w).Encode(history); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // GetDeviceVendorDetails retorna informações detalhadas do vendor via OUIja
@@ -561,7 +576,9 @@ func (s *Server) GetDeviceVendorDetails(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(details)
+	if err := json.NewEncoder(w).Encode(details); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // SearchVendorsByPattern busca vendors por padrão usando OUIja
@@ -591,11 +608,13 @@ func (s *Server) SearchVendorsByPattern(w http.ResponseWriter, r *http.Request) 
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"pattern": req.Pattern,
 		"vendors": vendors,
 		"count":   len(vendors),
-	})
+	}); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // GetTopVendors retorna os principais vendors por número de OUIs
@@ -610,11 +629,13 @@ func (s *Server) GetTopVendors(w http.ResponseWriter, r *http.Request) {
 	vendors := deviceid.GetTopVendors(limit)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"top_vendors": vendors,
 		"limit":       limit,
 		"count":       len(vendors),
-	})
+	}); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // GetDatabaseStats retorna estatísticas da base de dados OUI
@@ -632,7 +653,9 @@ func (s *Server) GetDatabaseStats(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(stats)
+	if err := json.NewEncoder(w).Encode(stats); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // enableCORS adiciona headers CORS
@@ -711,7 +734,9 @@ func (s *Server) handleCleanupInactive(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // === REGISTRATION VIA QR CODE ===
@@ -772,7 +797,9 @@ func (s *Server) handleGenerateQRCode(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // handleValidateToken valida se um token ainda é válido
@@ -821,7 +848,9 @@ func (s *Server) handleValidateToken(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // handleRegistrationSubmit processa o cadastro via QR code
@@ -927,12 +956,14 @@ func (s *Server) handleRegistrationSubmit(w http.ResponseWriter, r *http.Request
 		submission.Name, submission.Department, macAddress)
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]interface{}{
+	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"success":     true,
 		"message":     "Cadastro realizado com sucesso!",
 		"name":        submission.Name,
 		"mac_address": macAddress,
-	})
+	}); err != nil {
+		log.Printf("Erro ao codificar resposta: %v", err)
+	}
 }
 
 // handleRegistrationPage serve a página HTML de registro mobile

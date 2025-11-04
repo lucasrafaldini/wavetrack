@@ -106,7 +106,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Erro ao inicializar storage: %v", err)
 	}
-	defer dataStorage.Close()
+	defer func() {
+		if err := dataStorage.Close(); err != nil {
+			log.Printf("Erro ao fechar storage: %v", err)
+		}
+	}()
 	log.Println("Sistema de armazenamento iniciado (SQLite)")
 
 	// Inicializa o logger de eventos
@@ -114,7 +118,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Erro ao inicializar logger: %v", err)
 	}
-	defer eventLogger.Close()
+	defer func() {
+		if err := eventLogger.Close(); err != nil {
+			log.Printf("Erro ao fechar logger: %v", err)
+		}
+	}()
 	log.Printf("Sistema de logs iniciado: %s", eventLogger.GetLogPath())
 
 	// Inicializa o scanner Wi-Fi
