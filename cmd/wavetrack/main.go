@@ -4,9 +4,11 @@ import (
 	"flag"
 	"fmt"
 	"log"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"strings"
 	"syscall"
 	"time"
 
@@ -17,6 +19,59 @@ import (
 	"github.com/lucasrafaldini/wavetrack/internal/tracker"
 	"github.com/lucasrafaldini/wavetrack/internal/wifi"
 )
+
+// detectActiveInterface tenta detectar automaticamente a interface de rede WiFi ativa
+func detectActiveInterface() string {
+	log.Println("🔍 Detectando interface de rede ativa...")
+
+	interfaces, err := net.Interfaces()
+	if err != nil {
+		log.Printf("⚠️  Erro ao listar interfaces: %v", err)
+		return ""
+	}
+
+	// Lista de prefixos comuns para interfaces WiFi
+	wifiPrefixes := []string{"wlan", "wlp", "wlx", "en0", "en1", "wifi"}
+
+	var activeInterfaces []string
+	for _, iface := range interfaces {
+		// Verifica se a interface está UP e RUNNING
+		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagRunning == 0 {
+			continue
+		}
+
+		// Ignora loopback
+		if iface.Flags&net.FlagLoopback != 0 {
+			continue
+		}
+
+		name := iface.Name
+		log.Printf("   Interface ativa encontrada: %s (flags: %v)", name, iface.Flags)
+
+		// Verifica se é uma interface WiFi comum
+		isWifi := false
+		for _, prefix := range wifiPrefixes {
+			if strings.HasPrefix(strings.ToLower(name), prefix) {
+				isWifi = true
+				break
+			}
+		}
+
+		if isWifi {
+			log.Printf("   ✓ Interface WiFi detectada: %s", name)
+			activeInterfaces = append(activeInterfaces, name)
+		}
+	}
+
+	if len(activeInterfaces) > 0 {
+		selected := activeInterfaces[0]
+		log.Printf("✅ Interface selecionada: %s", selected)
+		return selected
+	}
+
+	log.Println("⚠️  Nenhuma interface WiFi ativa detectada")
+	return ""
+}
 
 func main() {
 	// Flags de linha de comando
@@ -31,7 +86,19 @@ func main() {
 	if err != nil {
 		log.Fatalf("Erro ao carregar configuração: %v", err)
 	}
-	log.Printf("Configuração carregada: interface=%s, intervalo=%ds",
+
+	// Detecta interface de rede automaticamente
+	detectedInterface := detectActiveInterface()
+	if detectedInterface != "" {
+		log.Printf("✓ Interface detectada automaticamente: %s (config tinha: %s)",
+			detectedInterface, cfg.Network.Interface)
+		cfg.Network.Interface = detectedInterface
+	} else {
+		log.Printf("⚠️  Detecção automática falhou, usando interface do config: %s",
+			cfg.Network.Interface)
+	}
+
+	log.Printf("Configuração final: interface=%s, intervalo=%ds",
 		cfg.Network.Interface, cfg.Network.ScanInterval)
 
 	// Inicializa o storage (SQLite)
@@ -39,7 +106,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Erro ao inicializar storage: %v", err)
 	}
-	defer dataStorage.Close()
+	defer func() {
+		if err := dataStorage.Close(); err != nil {
+			log.Printf("Erro ao fechar storage: %v", err)
+		}
+	}()
 	log.Println("Sistema de armazenamento iniciado (SQLite)")
 
 	// Inicializa o logger de eventos
@@ -47,7 +118,11 @@ func main() {
 	if err != nil {
 		log.Fatalf("Erro ao inicializar logger: %v", err)
 	}
-	defer eventLogger.Close()
+	defer func() {
+		if err := eventLogger.Close(); err != nil {
+			log.Printf("Erro ao fechar logger: %v", err)
+		}
+	}()
 	log.Printf("Sistema de logs iniciado: %s", eventLogger.GetLogPath())
 
 	// Inicializa o scanner Wi-Fi
@@ -67,9 +142,10 @@ func main() {
 	// Inicializa o servidor web
 	apiServer := api.NewServer(dataStorage, cfg)
 	go func() {
-		addr := fmt.Sprintf(":%d", *port)
-		log.Printf("🌐 Servidor web iniciado em http://localhost%s", addr)
+		addr := fmt.Sprintf("0.0.0.0:%d", *port)
+		log.Printf("🌐 Servidor web iniciado em http://0.0.0.0%s", addr[7:])
 		log.Println("   Acesse o dashboard no navegador!")
+		log.Println("   📱 Dispositivos na rede podem acessar via IP local")
 		if err := http.ListenAndServe(addr, apiServer.SetupRoutes()); err != nil {
 			log.Fatalf("Erro ao iniciar servidor web: %v", err)
 		}

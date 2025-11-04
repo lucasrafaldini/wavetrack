@@ -5,6 +5,7 @@ import (
 	_ "embed"
 	"encoding/json"
 	"fmt"
+	"log"
 	"path/filepath"
 	"time"
 
@@ -39,7 +40,9 @@ func NewStorage(dataDir string) (*Storage, error) {
 
 	// Inicializa schema
 	if err := storage.initSchema(); err != nil {
-		db.Close()
+		if closeErr := db.Close(); closeErr != nil {
+			return nil, fmt.Errorf("erro ao criar schema: %v (erro ao fechar: %v)", err, closeErr)
+		}
 		return nil, err
 	}
 
@@ -283,7 +286,9 @@ func (s *Storage) GetAllDevices() ([]models.Device, error) {
 
 		// Deserializa PossibleTypes do JSON
 		if possibleTypesJSON.Valid && possibleTypesJSON.String != "" {
-			json.Unmarshal([]byte(possibleTypesJSON.String), &device.PossibleTypes)
+			if err := json.Unmarshal([]byte(possibleTypesJSON.String), &device.PossibleTypes); err != nil {
+				log.Printf("Aviso: erro ao deserializar possible_types: %v", err)
+			}
 		}
 
 		devices = append(devices, device)
@@ -914,20 +919,126 @@ func (s *Storage) getOnlineDurationForDate(macAddress string, startOfDay, endOfD
 	return totalDuration, nil
 }
 
-// CleanupUnregisteredDevices remove dispositivos não cadastrados inativos há mais de X dias
-func (s *Storage) CleanupUnregisteredDevices(daysOld int) (int, error) {
-	// Remove dispositivos que:
-	// 1. Não estão na tabela employees (não cadastrados)
-	// 2. Estão inativos há mais de X dias
-	// 3. Não estão ativos no momento
+// === REGISTRATION TOKENS ===
+
+// CreateRegistrationToken cria um novo token de registro
+func (s *Storage) CreateRegistrationToken(token *models.RegistrationToken) error {
 	query := `
-	DELETE FROM devices 
-	WHERE mac_address NOT IN (SELECT mac_address FROM employees)
-	  AND is_active = 0
-	  AND last_seen < datetime('now', '-' || ? || ' days')
+		INSERT INTO registration_tokens (token, expires_at, used, created_at)
+		VALUES (?, ?, ?, ?)
+	`
+	_, err := s.db.Exec(query, token.Token, token.ExpiresAt, token.Used, token.CreatedAt)
+	return err
+}
+
+// GetRegistrationToken busca um token pelo seu valor
+func (s *Storage) GetRegistrationToken(token string) (*models.RegistrationToken, error) {
+	query := `
+		SELECT token, expires_at, used, created_at, used_at
+		FROM registration_tokens
+		WHERE token = ?
 	`
 
-	result, err := s.db.Exec(query, daysOld)
+	var rt models.RegistrationToken
+	var usedAt sql.NullTime
+
+	err := s.db.QueryRow(query, token).Scan(
+		&rt.Token,
+		&rt.ExpiresAt,
+		&rt.Used,
+		&rt.CreatedAt,
+		&usedAt,
+	)
+
+	if err == sql.ErrNoRows {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	if usedAt.Valid {
+		rt.UsedAt = &usedAt.Time
+	}
+
+	return &rt, nil
+}
+
+// MarkTokenAsUsed marca um token como usado
+func (s *Storage) MarkTokenAsUsed(token string) error {
+	query := `
+		UPDATE registration_tokens 
+		SET used = 1, used_at = CURRENT_TIMESTAMP
+		WHERE token = ?
+	`
+	_, err := s.db.Exec(query, token)
+	return err
+}
+
+// CleanExpiredTokens remove tokens expirados (rotina de limpeza)
+func (s *Storage) CleanExpiredTokens() error {
+	query := `DELETE FROM registration_tokens WHERE expires_at < CURRENT_TIMESTAMP`
+	_, err := s.db.Exec(query)
+	return err
+}
+
+// === CLEANUP FUNCTIONS ===
+
+// CleanupUnregisteredDevices remove dispositivos não cadastrados inativos há mais de X dias
+func (s *Storage) CleanupUnregisteredDevices(daysOld int) (int, error) {
+	// PASSO 1: Atualiza o campo is_active no banco baseado no timeout (20 minutos padrão)
+	updateQuery := `
+		UPDATE devices 
+		SET is_active = 0 
+		WHERE datetime(last_seen) < datetime('now', '-20 minutes')
+	`
+	if _, err := s.db.Exec(updateQuery); err != nil {
+		log.Printf("⚠️  Erro ao atualizar status: %v", err)
+	} else {
+		log.Printf("🔄 Status de dispositivos atualizado baseado em last_seen")
+	}
+
+	// PASSO 2: Remove dispositivos que:
+	// 1. Não estão na tabela employees (não cadastrados)
+	// 2. Estão inativos (is_active = 0)
+	// 3. Se daysOld > 0, considera também o tempo desde last_seen
+	var query string
+	var result sql.Result
+	var err error
+
+	// Debug: verifica quantos dispositivos inativos sem cadastro existem
+	var countBefore int
+	debugQuery := `
+		SELECT COUNT(*) FROM devices 
+		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
+		  AND is_active = 0
+	`
+	if err := s.db.QueryRow(debugQuery).Scan(&countBefore); err != nil {
+		log.Printf("⚠️  Erro ao contar dispositivos: %v", err)
+	}
+	log.Printf("🔍 DEBUG: Dispositivos inativos sem cadastro antes da limpeza: %d", countBefore)
+
+	if daysOld == 0 {
+		// Remove TODOS os dispositivos inativos sem cadastro, independente do tempo
+		query = `
+		DELETE FROM devices 
+		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
+		  AND is_active = 0
+		`
+		log.Printf("🧹 Executando limpeza: removendo TODOS os inativos sem cadastro")
+		result, err = s.db.Exec(query)
+	} else {
+		// Remove dispositivos inativos há mais de X dias
+		query = `
+		DELETE FROM devices 
+		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
+		  AND is_active = 0
+		  AND last_seen < datetime('now', '-' || ? || ' days')
+		`
+		log.Printf("🧹 Executando limpeza: removendo inativos há mais de %d dias", daysOld)
+		result, err = s.db.Exec(query, daysOld)
+	}
+
 	if err != nil {
 		return 0, fmt.Errorf("erro ao limpar dispositivos não cadastrados: %v", err)
 	}
@@ -937,6 +1048,7 @@ func (s *Storage) CleanupUnregisteredDevices(daysOld int) (int, error) {
 		return 0, fmt.Errorf("erro ao obter dispositivos removidos: %v", err)
 	}
 
+	log.Printf("✅ Dispositivos removidos: %d", int(affected))
 	return int(affected), nil
 }
 
@@ -966,6 +1078,16 @@ func (s *Storage) CleanupOldEvents(daysToKeep int) (int, error) {
 
 // GetUnregisteredDevicesCount retorna a quantidade de dispositivos não cadastrados
 func (s *Storage) GetUnregisteredDevicesCount() (total, inactive int, err error) {
+	// Primeiro, atualiza o campo is_active baseado no timeout
+	updateQuery := `
+		UPDATE devices 
+		SET is_active = 0 
+		WHERE datetime(last_seen) < datetime('now', '-20 minutes')
+	`
+	if _, execErr := s.db.Exec(updateQuery); execErr != nil {
+		log.Printf("⚠️  Erro ao atualizar status: %v", execErr)
+	}
+
 	// Total de dispositivos não cadastrados
 	err = s.db.QueryRow(`
 		SELECT COUNT(*) FROM devices 
@@ -975,7 +1097,7 @@ func (s *Storage) GetUnregisteredDevicesCount() (total, inactive int, err error)
 		return 0, 0, fmt.Errorf("erro ao contar dispositivos não cadastrados: %v", err)
 	}
 
-	// Dispositivos não cadastrados inativos
+	// Dispositivos não cadastrados inativos (baseado no campo is_active do banco)
 	err = s.db.QueryRow(`
 		SELECT COUNT(*) FROM devices 
 		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
