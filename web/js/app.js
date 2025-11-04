@@ -219,7 +219,7 @@ function rowHTML(device) {
             </td>
             <td class="mac-address">${device.mac_address}</td>
             <td>
-                ${renderDeviceType(device)}
+                ${getDeviceTypeIcon(device.type)} ${getDeviceTypeName(device.type)}
             </td>
             <td style="font-size: 0.9em; color: #666;">
                 ${device.vendor || 'Desconhecido'}

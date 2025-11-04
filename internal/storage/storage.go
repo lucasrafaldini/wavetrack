@@ -1040,6 +1040,8 @@ func (s *Storage) CleanupUnregisteredDevices(daysOld int) (int, error) {
 	}
 
 	log.Printf("✅ Dispositivos removidos: %d", int(affected))
+	return int(affected), nil
+}
 
 // CleanupOldEvents remove eventos antigos (mantém apenas os últimos X dias)
 func (s *Storage) CleanupOldEvents(daysToKeep int) (int, error) {
