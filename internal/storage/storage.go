@@ -119,10 +119,10 @@ func (s *Storage) GetOnlineDurationToday(macAddress string, now time.Time) (time
 	if err != nil {
 		return 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var (
-		total time.Duration
+		total    time.Duration
 		openSess *time.Time
 	)
 
@@ -260,7 +260,7 @@ func (s *Storage) GetAllDevices() ([]models.Device, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var devices []models.Device
 	for rows.Next() {
@@ -384,7 +384,7 @@ func (s *Storage) GetAllEmployees() ([]models.Employee, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var employees []models.Employee
 	for rows.Next() {
@@ -505,7 +505,7 @@ func (s *Storage) GetEvents(startDate, endDate time.Time, eventType string) ([]m
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var events []models.PresenceEvent
 	for rows.Next() {
@@ -542,7 +542,7 @@ func (s *Storage) GetRecentEvents(limit int) ([]models.PresenceEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var events []models.PresenceEvent
 	for rows.Next() {
@@ -631,10 +631,10 @@ func (s *Storage) GetDeviceDetails(macAddress string) (map[string]interface{}, e
 	`
 
 	var (
-		mac, vendor, devType string
-		firstSeen, lastSeen time.Time
-		signal int
-		isActive bool
+		mac, vendor, devType       string
+		firstSeen, lastSeen        time.Time
+		signal                     int
+		isActive                   bool
 		employeeName, employeeDept sql.NullString
 	)
 
@@ -651,13 +651,13 @@ func (s *Storage) GetDeviceDetails(macAddress string) (map[string]interface{}, e
 	}
 
 	details := map[string]interface{}{
-		"mac_address": mac,
-		"vendor": vendor,
-		"type": devType,
-		"first_seen": firstSeen,
-		"last_seen": lastSeen,
+		"mac_address":     mac,
+		"vendor":          vendor,
+		"type":            devType,
+		"first_seen":      firstSeen,
+		"last_seen":       lastSeen,
 		"signal_strength": signal,
-		"is_active": isActive,
+		"is_active":       isActive,
 	}
 
 	if employeeName.Valid {
@@ -705,20 +705,20 @@ func (s *Storage) GetLastDepartureToday(macAddress string) (*time.Time, error) {
 
 // HistoryDayData representa dados de um dia no histórico
 type HistoryDayData struct {
-	Date time.Time
+	Date           time.Time
 	TotalEmployees int
-	TotalDevices int
-	Employees []HistoryEmployeeData
+	TotalDevices   int
+	Employees      []HistoryEmployeeData
 }
 
 // HistoryEmployeeData representa dados de um funcionário em um dia
 type HistoryEmployeeData struct {
-	MACAddress string
-	Name string
-	DeviceType string
-	Vendor string
-	FirstArrival *time.Time
-	LastDeparture *time.Time
+	MACAddress      string
+	Name            string
+	DeviceType      string
+	Vendor          string
+	FirstArrival    *time.Time
+	LastDeparture   *time.Time
 	DurationSeconds int
 }
 
@@ -752,7 +752,7 @@ func (s *Storage) GetHistory7Days() ([]HistoryDayData, error) {
 			var deviceType, vendor sql.NullString
 
 			if err := rows.Scan(&empData.MACAddress, &empData.Name, &deviceType, &vendor); err != nil {
-				rows.Close()
+				_ = rows.Close()
 				return nil, err
 			}
 
@@ -777,13 +777,13 @@ func (s *Storage) GetHistory7Days() ([]HistoryDayData, error) {
 
 			employees = append(employees, empData)
 		}
-		rows.Close()
+		_ = rows.Close()
 
 		dayData := HistoryDayData{
-			Date: date,
+			Date:           date,
 			TotalEmployees: len(employees),
-			TotalDevices: len(employees),
-			Employees: employees,
+			TotalDevices:   len(employees),
+			Employees:      employees,
 		}
 
 		history = append(history, dayData)
@@ -874,7 +874,7 @@ func (s *Storage) getOnlineDurationForDate(macAddress string, startOfDay, endOfD
 	if err != nil {
 		return 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var totalDuration time.Duration
 	var lastArrival *time.Time

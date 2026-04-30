@@ -25,7 +25,7 @@ func newTempStorage(t *testing.T) *Storage {
 	}
 
 	t.Cleanup(func() {
-		st.Close()
+		_ = st.Close()
 		// remove db file explicitly to avoid leftovers on some systems
 		_ = os.Remove(filepath.Join(dir, "wavetrack.db"))
 	})

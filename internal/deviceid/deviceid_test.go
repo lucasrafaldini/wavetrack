@@ -7,23 +7,23 @@ import (
 // TestIdentifyDeviceBasic testa a função básica de identificação
 func TestIdentifyDeviceBasic(t *testing.T) {
 	testCases := []struct {
-		name string
-		mac string
+		name       string
+		mac        string
 		wantVendor string
 	}{
 		{
-			name: "Apple MAC",
-			mac: "A4:5E:60:12:34:56",
+			name:       "Apple MAC",
+			mac:        "A4:5E:60:12:34:56",
 			wantVendor: "Apple",
 		},
 		{
-			name: "VMware MAC",
-			mac: "00:50:56:12:34:56",
+			name:       "VMware MAC",
+			mac:        "00:50:56:12:34:56",
 			wantVendor: "VMware",
 		},
 		{
-			name: "Invalid MAC",
-			mac: "invalid",
+			name:       "Invalid MAC",
+			mac:        "invalid",
 			wantVendor: "Unknown",
 		},
 	}
@@ -41,18 +41,18 @@ func TestIdentifyDeviceBasic(t *testing.T) {
 // TestIdentifyDeviceDetailed testa a função detalhada de identificação
 func TestIdentifyDeviceDetailed(t *testing.T) {
 	testCases := []struct {
-		name string
-		mac string
+		name       string
+		mac        string
 		wantVendor string
 	}{
 		{
-			name: "Apple MAC detailed",
-			mac: "A4:5E:60:12:34:56",
+			name:       "Apple MAC detailed",
+			mac:        "A4:5E:60:12:34:56",
 			wantVendor: "Apple",
 		},
 		{
-			name: "Empty MAC",
-			mac: "",
+			name:       "Empty MAC",
+			mac:        "",
 			wantVendor: "Unknown",
 		},
 	}

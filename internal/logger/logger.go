@@ -13,8 +13,8 @@ import (
 
 // EventLogger gerencia o registro de eventos de presença
 type EventLogger struct {
-	logDir string
-	logFile *os.File
+	logDir   string
+	logFile  *os.File
 	filePath string
 }
 
@@ -59,7 +59,7 @@ func (l *EventLogger) LogEvent(event *models.PresenceEvent) error {
 	currentFilename := filepath.Base(l.filePath)
 
 	if expectedFilename != currentFilename {
-		l.logFile.Close()
+		_ = l.logFile.Close()
 		if err := l.openLogFile(); err != nil {
 			return err
 		}
@@ -89,9 +89,9 @@ func (l *EventLogger) LogEvent(event *models.PresenceEvent) error {
 // LogDeviceDetection registra a detecção de um dispositivo
 func (l *EventLogger) LogDeviceDetection(device *models.Device, eventType string) error {
 	event := &models.PresenceEvent{
-		Timestamp: time.Now(),
-		Type: eventType,
-		MACAddress: device.MACAddress,
+		Timestamp:      time.Now(),
+		Type:           eventType,
+		MACAddress:     device.MACAddress,
 		SignalStrength: device.SignalStrength,
 	}
 

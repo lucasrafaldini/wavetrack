@@ -15,16 +15,16 @@ func main() {
 	if err != nil {
 		log.Fatalf("Erro ao abrir banco: %v", err)
 	}
-	defer db.Close()
+	defer func() { _ = db.Close() }()
 
 	log.Println(" Iniciando seed de dados históricos...")
 
 	// Lista de funcionários fake
 	employees := []struct {
-		Name string
-		MAC string
+		Name       string
+		MAC        string
 		DeviceType string
-		Vendor string
+		Vendor     string
 		Department string
 	}{
 		{"Lucas Rafaldini", "00:11:22:33:44:01", "iphone-16", "Apple", "TI"},
@@ -59,7 +59,7 @@ func main() {
 	// Gera histórico dos últimos 7 dias
 	log.Println("\n Gerando histórico dos últimos 7 dias...")
 
-	rand.Seed(time.Now().UnixNano())
+
 
 	for dayOffset := 0; dayOffset < 7; dayOffset++ {
 		date := time.Now().AddDate(0, 0, -dayOffset)

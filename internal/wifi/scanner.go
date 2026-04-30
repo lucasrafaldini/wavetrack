@@ -14,21 +14,21 @@ import (
 
 // Scanner é responsável por monitorar dispositivos na rede Wi-Fi
 type Scanner struct {
-	iface string
-	handle *pcap.Handle
-	devices map[string]*models.Device
-	deviceChan chan *models.Device
-	stopChan chan bool
+	iface       string
+	handle      *pcap.Handle
+	devices     map[string]*models.Device
+	deviceChan  chan *models.Device
+	stopChan    chan bool
 	monitorMode bool // true se suporta modo monitor (802.11)
 }
 
 // NewScanner cria uma nova instância do scanner
 func NewScanner(iface string) *Scanner {
 	return &Scanner{
-		iface: iface,
-		devices: make(map[string]*models.Device),
+		iface:      iface,
+		devices:    make(map[string]*models.Device),
 		deviceChan: make(chan *models.Device, 100),
-		stopChan: make(chan bool),
+		stopChan:   make(chan bool),
 	}
 }
 
@@ -86,9 +86,9 @@ func (s *Scanner) capturePackets() {
 // processPacket extrai informações de dispositivos dos pacotes capturados
 func (s *Scanner) processPacket(packet gopacket.Packet) {
 	var macAddr string
-	signal := 0 // 0 = sinal não disponível (modo não-monitor)
+	signal := 0    // 0 = sinal não disponível (modo não-monitor)
 	frequency := 0 // 0 = frequência não disponível
-	channel := 0 // 0 = canal não disponível
+	channel := 0   // 0 = canal não disponível
 
 	// Tenta primeiro extrair de pacotes 802.11 (modo monitor)
 	dot11Layer := packet.Layer(layers.LayerTypeDot11)
@@ -155,17 +155,17 @@ func (s *Scanner) processPacket(packet gopacket.Packet) {
 		deviceInfo := deviceid.IdentifyDeviceDetailed(macAddr)
 
 		device := &models.Device{
-			MACAddress: macAddr,
-			Type: deviceType,
-			Vendor: vendor,
+			MACAddress:     macAddr,
+			Type:           deviceType,
+			Vendor:         vendor,
 			SignalStrength: signal,
-			Frequency: frequency,
-			Channel: channel,
-			FirstSeen: now,
-			LastSeen: now,
-			IsActive: true,
-			IsAmbiguous: deviceInfo.IsAmbiguous,
-			PossibleTypes: deviceInfo.PossibleTypes,
+			Frequency:      frequency,
+			Channel:        channel,
+			FirstSeen:      now,
+			LastSeen:       now,
+			IsActive:       true,
+			IsAmbiguous:    deviceInfo.IsAmbiguous,
+			PossibleTypes:  deviceInfo.PossibleTypes,
 		}
 		s.devices[macAddr] = device
 		s.deviceChan <- device

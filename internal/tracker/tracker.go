@@ -13,22 +13,22 @@ import (
 
 // PresenceTracker gerencia o rastreamento de presença de funcionários
 type PresenceTracker struct {
-	config *config.Config
-	scanner *wifi.Scanner
-	logger *logger.EventLogger
-	storage *storage.Storage
-	lastSeen map[string]time.Time // MAC -> LastSeen
-	presenceMap map[string]bool // MAC -> IsPresent
+	config      *config.Config
+	scanner     *wifi.Scanner
+	logger      *logger.EventLogger
+	storage     *storage.Storage
+	lastSeen    map[string]time.Time // MAC -> LastSeen
+	presenceMap map[string]bool      // MAC -> IsPresent
 }
 
 // NewPresenceTracker cria uma nova instância do tracker
 func NewPresenceTracker(cfg *config.Config, scanner *wifi.Scanner, logger *logger.EventLogger, storage *storage.Storage) *PresenceTracker {
 	tracker := &PresenceTracker{
-		config: cfg,
-		scanner: scanner,
-		logger: logger,
-		storage: storage,
-		lastSeen: make(map[string]time.Time),
+		config:      cfg,
+		scanner:     scanner,
+		logger:      logger,
+		storage:     storage,
+		lastSeen:    make(map[string]time.Time),
 		presenceMap: make(map[string]bool),
 	}
 
@@ -87,13 +87,13 @@ func (t *PresenceTracker) handleDevice(device *models.Device) {
 		if !wasPresent {
 			// Funcionário chegou
 			event := &models.PresenceEvent{
-				Timestamp: time.Now(),
-				Type: "arrival",
-				EmployeeName: employee.Name,
-				MACAddress: device.MACAddress,
+				Timestamp:      time.Now(),
+				Type:           "arrival",
+				EmployeeName:   employee.Name,
+				MACAddress:     device.MACAddress,
 				SignalStrength: device.SignalStrength,
 			}
-			t.logger.LogEvent(event)
+			_ = t.logger.LogEvent(event)
 
 			// Salva evento no banco
 			if err := t.storage.SaveEvent(event); err != nil {
@@ -109,12 +109,12 @@ func (t *PresenceTracker) handleDevice(device *models.Device) {
 	} else {
 		// Dispositivo desconhecido - registra evento
 		event := &models.PresenceEvent{
-			Timestamp: time.Now(),
-			Type: "unknown_device",
-			MACAddress: device.MACAddress,
+			Timestamp:      time.Now(),
+			Type:           "unknown_device",
+			MACAddress:     device.MACAddress,
 			SignalStrength: device.SignalStrength,
 		}
-		t.logger.LogEvent(event)
+		_ = t.logger.LogEvent(event)
 
 		// Salva evento no banco
 		if err := t.storage.SaveEvent(event); err != nil {
@@ -156,13 +156,13 @@ func (t *PresenceTracker) checkTimeouts() {
 			if now.Sub(lastSeen) > timeout && t.presenceMap[mac] {
 				// Funcionário saiu
 				event := &models.PresenceEvent{
-					Timestamp: now,
-					Type: "departure",
-					EmployeeName: employee.Name,
-					MACAddress: mac,
+					Timestamp:      now,
+					Type:           "departure",
+					EmployeeName:   employee.Name,
+					MACAddress:     mac,
 					SignalStrength: 0,
 				}
-				t.logger.LogEvent(event)
+				_ = t.logger.LogEvent(event)
 
 				// Salva evento no banco
 				if err := t.storage.SaveEvent(event); err != nil {

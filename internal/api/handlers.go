@@ -21,44 +21,44 @@ import (
 // Server gerencia a API web
 type Server struct {
 	storage *storage.Storage
-	cfg *config.Config
+	cfg     *config.Config
 }
 
 // NewServer cria uma nova instância do servidor API
 func NewServer(storage *storage.Storage, cfg *config.Config) *Server {
 	return &Server{
 		storage: storage,
-		cfg: cfg,
+		cfg:     cfg,
 	}
 }
 
 // DeviceResponse representa um dispositivo na resposta da API
 type DeviceResponse struct {
-	MACAddress string `json:"mac_address"`
-	Type string `json:"type"`
-	Vendor string `json:"vendor"`
-	SignalStrength int `json:"signal_strength"`
-	Frequency int `json:"frequency"`
-	Channel int `json:"channel"`
-	FirstSeen time.Time `json:"first_seen"`
-	LastSeen time.Time `json:"last_seen"`
-	IsActive bool `json:"is_active"`
-	IsAmbiguous bool `json:"is_ambiguous"` // true se o fabricante faz múltiplos tipos
-	PossibleTypes []string `json:"possible_types"` // tipos possíveis quando ambíguo
-	EmployeeName string `json:"employee_name,omitempty"`
-	Department string `json:"department,omitempty"`
+	MACAddress     string     `json:"mac_address"`
+	Type           string     `json:"type"`
+	Vendor         string     `json:"vendor"`
+	SignalStrength int        `json:"signal_strength"`
+	Frequency      int        `json:"frequency"`
+	Channel        int        `json:"channel"`
+	FirstSeen      time.Time  `json:"first_seen"`
+	LastSeen       time.Time  `json:"last_seen"`
+	IsActive       bool       `json:"is_active"`
+	IsAmbiguous    bool       `json:"is_ambiguous"`   // true se o fabricante faz múltiplos tipos
+	PossibleTypes  []string   `json:"possible_types"` // tipos possíveis quando ambíguo
+	EmployeeName   string     `json:"employee_name,omitempty"`
+	Department     string     `json:"department,omitempty"`
 	FirstSeenToday *time.Time `json:"first_seen_today,omitempty"`
-	OnlineDuration int `json:"online_duration_seconds"`
+	OnlineDuration int        `json:"online_duration_seconds"`
 }
 
 // AssociateDeviceRequest representa uma requisição para associar dispositivo a funcionário
 type AssociateDeviceRequest struct {
-	MACAddress string `json:"mac_address"`
-	OldMACAddress string `json:"old_mac_address,omitempty"` // Para edição com mudança de MAC
-	Name string `json:"name"`
-	Department string `json:"department"`
+	MACAddress       string `json:"mac_address"`
+	OldMACAddress    string `json:"old_mac_address,omitempty"` // Para edição com mudança de MAC
+	Name             string `json:"name"`
+	Department       string `json:"department"`
 	CustomDeviceType string `json:"custom_device_type,omitempty"`
-	CustomVendor string `json:"custom_vendor,omitempty"`
+	CustomVendor     string `json:"custom_vendor,omitempty"`
 }
 
 // DeviceVendorDetailRequest representa uma requisição para detalhes do vendor
@@ -134,17 +134,17 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 		employee, _ := s.storage.GetEmployeeByMAC(device.MACAddress)
 
 		dr := DeviceResponse{
-			MACAddress: device.MACAddress,
-			Type: device.Type,
-			Vendor: device.Vendor,
+			MACAddress:     device.MACAddress,
+			Type:           device.Type,
+			Vendor:         device.Vendor,
 			SignalStrength: device.SignalStrength,
-			Frequency: device.Frequency,
-			Channel: device.Channel,
-			FirstSeen: device.FirstSeen,
-			LastSeen: device.LastSeen,
-			IsActive: device.IsActive && now.Sub(device.LastSeen) < offlineThreshold,
-			IsAmbiguous: device.IsAmbiguous,
-			PossibleTypes: device.PossibleTypes,
+			Frequency:      device.Frequency,
+			Channel:        device.Channel,
+			FirstSeen:      device.FirstSeen,
+			LastSeen:       device.LastSeen,
+			IsActive:       device.IsActive && now.Sub(device.LastSeen) < offlineThreshold,
+			IsAmbiguous:    device.IsAmbiguous,
+			PossibleTypes:  device.PossibleTypes,
 		}
 
 		if employee != nil {
@@ -274,11 +274,11 @@ func (s *Server) handleAssociate(w http.ResponseWriter, r *http.Request) {
 		log.Printf(" Dispositivo %s não encontrado, criando registro básico", req.MACAddress)
 		newDevice := &models.Device{
 			MACAddress: req.MACAddress,
-			Type: "unknown",
-			Vendor: "unknown",
-			FirstSeen: time.Now(),
-			LastSeen: time.Now(),
-			IsActive: false,
+			Type:       "unknown",
+			Vendor:     "unknown",
+			FirstSeen:  time.Now(),
+			LastSeen:   time.Now(),
+			IsActive:   false,
 		}
 		if err := s.storage.SaveDevice(newDevice); err != nil {
 			log.Printf("Erro ao criar dispositivo: %v", err)
@@ -289,11 +289,11 @@ func (s *Server) handleAssociate(w http.ResponseWriter, r *http.Request) {
 
 	// Cria ou atualiza funcionário
 	employee := &models.Employee{
-		MACAddress: req.MACAddress,
-		Name: req.Name,
-		Department: req.Department,
+		MACAddress:       req.MACAddress,
+		Name:             req.Name,
+		Department:       req.Department,
 		CustomDeviceType: req.CustomDeviceType,
-		CustomVendor: req.CustomVendor,
+		CustomVendor:     req.CustomVendor,
 	}
 
 	if err := s.storage.SaveEmployee(employee); err != nil {
@@ -400,13 +400,13 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 
 // EmployeeReportItem representa um item do relatório diário de um funcionário
 type EmployeeReportItem struct {
-	Name string `json:"name"`
-	Department string `json:"department"`
-	MACAddress string `json:"mac_address"`
-	FirstArrival *time.Time `json:"first_arrival,omitempty"`
-	LastDeparture *time.Time `json:"last_departure,omitempty"`
-	OnlineDuration int `json:"online_duration_seconds"`
-	IsCurrentlyOnline bool `json:"is_currently_online"`
+	Name              string     `json:"name"`
+	Department        string     `json:"department"`
+	MACAddress        string     `json:"mac_address"`
+	FirstArrival      *time.Time `json:"first_arrival,omitempty"`
+	LastDeparture     *time.Time `json:"last_departure,omitempty"`
+	OnlineDuration    int        `json:"online_duration_seconds"`
+	IsCurrentlyOnline bool       `json:"is_currently_online"`
 }
 
 // handleReportToday retorna relatório de presença do dia atual
@@ -434,7 +434,7 @@ func (s *Server) handleReportToday(w http.ResponseWriter, r *http.Request) {
 
 	for _, emp := range employees {
 		item := EmployeeReportItem{
-			Name: emp.Name,
+			Name:       emp.Name,
 			Department: emp.Department,
 			MACAddress: emp.MACAddress,
 		}
@@ -470,21 +470,21 @@ func (s *Server) handleReportToday(w http.ResponseWriter, r *http.Request) {
 
 // HistoryDay representa um dia no histórico
 type HistoryDay struct {
-	Date string `json:"date"`
-	TotalEmployees int `json:"total_employees"`
-	TotalDevices int `json:"total_devices"`
-	TotalHours float64 `json:"total_hours"`
-	Employees []HistoryEmployee `json:"employees"`
+	Date           string            `json:"date"`
+	TotalEmployees int               `json:"total_employees"`
+	TotalDevices   int               `json:"total_devices"`
+	TotalHours     float64           `json:"total_hours"`
+	Employees      []HistoryEmployee `json:"employees"`
 }
 
 // HistoryEmployee representa um funcionário no histórico
 type HistoryEmployee struct {
-	Name string `json:"name"`
-	DeviceType string `json:"device_type"`
-	FirstArrival string `json:"first_arrival"`
-	LastDeparture string `json:"last_departure"`
-	DurationSeconds int `json:"duration_seconds"`
-	PresencePercentage int `json:"presence_percentage"`
+	Name               string `json:"name"`
+	DeviceType         string `json:"device_type"`
+	FirstArrival       string `json:"first_arrival"`
+	LastDeparture      string `json:"last_departure"`
+	DurationSeconds    int    `json:"duration_seconds"`
+	PresencePercentage int    `json:"presence_percentage"`
 }
 
 // handleHistory7Days retorna histórico dos últimos 7 dias do banco de dados
@@ -529,11 +529,11 @@ func (s *Server) handleHistory7Days(w http.ResponseWriter, r *http.Request) {
 			}
 
 			employees = append(employees, HistoryEmployee{
-				Name: emp.Name,
-				DeviceType: emp.DeviceType,
-				FirstArrival: firstArrival,
-				LastDeparture: lastDeparture,
-				DurationSeconds: emp.DurationSeconds,
+				Name:               emp.Name,
+				DeviceType:         emp.DeviceType,
+				FirstArrival:       firstArrival,
+				LastDeparture:      lastDeparture,
+				DurationSeconds:    emp.DurationSeconds,
 				PresencePercentage: presencePercent,
 			})
 
@@ -541,11 +541,11 @@ func (s *Server) handleHistory7Days(w http.ResponseWriter, r *http.Request) {
 		}
 
 		history = append(history, HistoryDay{
-			Date: day.Date.Format("2006-01-02"),
+			Date:           day.Date.Format("2006-01-02"),
 			TotalEmployees: day.TotalEmployees,
-			TotalDevices: day.TotalDevices,
-			TotalHours: float64(totalSeconds) / 3600.0,
-			Employees: employees,
+			TotalDevices:   day.TotalDevices,
+			TotalHours:     float64(totalSeconds) / 3600.0,
+			Employees:      employees,
 		})
 	}
 
@@ -617,7 +617,7 @@ func (s *Server) SearchVendorsByPattern(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"pattern": req.Pattern,
 		"vendors": vendors,
-		"count": len(vendors),
+		"count":   len(vendors),
 	}); err != nil {
 		log.Printf("Erro ao codificar resposta: %v", err)
 	}
@@ -637,8 +637,8 @@ func (s *Server) GetTopVendors(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"top_vendors": vendors,
-		"limit": limit,
-		"count": len(vendors),
+		"limit":       limit,
+		"count":       len(vendors),
 	}); err != nil {
 		log.Printf("Erro ao codificar resposta: %v", err)
 	}
@@ -729,14 +729,14 @@ func (s *Server) handleCleanupInactive(w http.ResponseWriter, r *http.Request) {
 
 	// Retorna resposta
 	response := map[string]interface{}{
-		"success": true,
+		"success":         true,
 		"removed_devices": removedDevices,
-		"removed_events": removedEvents,
-		"total_before": totalBefore,
-		"total_after": totalAfter,
+		"removed_events":  removedEvents,
+		"total_before":    totalBefore,
+		"total_after":     totalAfter,
 		"inactive_before": inactiveBefore,
-		"inactive_after": inactiveAfter,
-		"message": fmt.Sprintf("Limpeza concluída: %d dispositivos e %d eventos removidos", removedDevices, removedEvents),
+		"inactive_after":  inactiveAfter,
+		"message":         fmt.Sprintf("Limpeza concluída: %d dispositivos e %d eventos removidos", removedDevices, removedEvents),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -762,9 +762,9 @@ func (s *Server) handleGenerateQRCode(w http.ResponseWriter, r *http.Request) {
 
 	// Salva no banco
 	regToken := &models.RegistrationToken{
-		Token: token,
+		Token:     token,
 		ExpiresAt: expiresAt,
-		Used: false,
+		Used:      false,
 		CreatedAt: time.Now(),
 	}
 
@@ -795,9 +795,9 @@ func (s *Server) handleGenerateQRCode(w http.ResponseWriter, r *http.Request) {
 
 	// Retorna resposta
 	response := map[string]interface{}{
-		"token": token,
-		"url": registerURL,
-		"qr_code": fmt.Sprintf("data:image/png;base64,%s", qrBase64),
+		"token":      token,
+		"url":        registerURL,
+		"qr_code":    fmt.Sprintf("data:image/png;base64,%s", qrBase64),
 		"expires_at": expiresAt.Format(time.RFC3339),
 		"expires_in": "24 horas",
 	}
@@ -849,7 +849,7 @@ func (s *Server) handleValidateToken(w http.ResponseWriter, r *http.Request) {
 
 	// Token válido
 	response := map[string]interface{}{
-		"valid": true,
+		"valid":      true,
 		"expires_at": regToken.ExpiresAt.Format(time.RFC3339),
 	}
 
@@ -927,11 +927,11 @@ func (s *Server) handleRegistrationSubmit(w http.ResponseWriter, r *http.Request
 		// Cria dispositivo básico
 		device = &models.Device{
 			MACAddress: macAddress,
-			Type: "smartphone", // Assume smartphone por padrão
-			Vendor: "unknown",
-			FirstSeen: time.Now(),
-			LastSeen: time.Now(),
-			IsActive: true,
+			Type:       "smartphone", // Assume smartphone por padrão
+			Vendor:     "unknown",
+			FirstSeen:  time.Now(),
+			LastSeen:   time.Now(),
+			IsActive:   true,
 		}
 		if err := s.storage.SaveDevice(device); err != nil {
 			log.Printf("Erro ao criar dispositivo: %v", err)
@@ -940,11 +940,11 @@ func (s *Server) handleRegistrationSubmit(w http.ResponseWriter, r *http.Request
 
 	// Cria colaborador
 	employee := &models.Employee{
-		MACAddress: macAddress,
-		Name: submission.Name,
-		Department: submission.Department,
+		MACAddress:       macAddress,
+		Name:             submission.Name,
+		Department:       submission.Department,
 		CustomDeviceType: submission.CustomDeviceType,
-		CustomVendor: submission.CustomVendor,
+		CustomVendor:     submission.CustomVendor,
 	}
 
 	if err := s.storage.SaveEmployee(employee); err != nil {
@@ -963,9 +963,9 @@ func (s *Server) handleRegistrationSubmit(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"success": true,
-		"message": "Cadastro realizado com sucesso!",
-		"name": submission.Name,
+		"success":     true,
+		"message":     "Cadastro realizado com sucesso!",
+		"name":        submission.Name,
 		"mac_address": macAddress,
 	}); err != nil {
 		log.Printf("Erro ao codificar resposta: %v", err)
@@ -1102,7 +1102,7 @@ func isValidMAC(mac string) bool {
 		}
 		// Verifica se é hexadecimal
 		for _, c := range part {
-			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
 				return false
 			}
 		}

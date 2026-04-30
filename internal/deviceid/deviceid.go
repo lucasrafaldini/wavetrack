@@ -56,8 +56,8 @@ func inferDeviceType(company string) VendorInfo {
 		strings.Contains(company, "realme") ||
 		strings.Contains(company, "nokia") && strings.Contains(company, "mobile") {
 		return VendorInfo{
-			Name:       company,
-			DeviceType: "smartphone",
+			Name:        company,
+			DeviceType:  "smartphone",
 			IsAmbiguous: false,
 		}
 	}
@@ -74,8 +74,8 @@ func inferDeviceType(company string) VendorInfo {
 		strings.Contains(company, "msi") ||
 		strings.Contains(company, "gigabyte") {
 		return VendorInfo{
-			Name:       company,
-			DeviceType: "laptop",
+			Name:        company,
+			DeviceType:  "laptop",
 			IsAmbiguous: false,
 		}
 	}
@@ -92,8 +92,8 @@ func inferDeviceType(company string) VendorInfo {
 		strings.Contains(company, "juniper") ||
 		strings.Contains(company, "fortinet") {
 		return VendorInfo{
-			Name:       company,
-			DeviceType: "router",
+			Name:        company,
+			DeviceType:  "router",
 			IsAmbiguous: false,
 		}
 	}
@@ -106,8 +106,8 @@ func inferDeviceType(company string) VendorInfo {
 		strings.Contains(company, "tuya smart") ||
 		strings.Contains(company, "sonoff") {
 		return VendorInfo{
-			Name:       company,
-			DeviceType: "iot",
+			Name:        company,
+			DeviceType:  "iot",
 			IsAmbiguous: false,
 		}
 	}
@@ -118,15 +118,15 @@ func inferDeviceType(company string) VendorInfo {
 	if strings.Contains(company, "apple") {
 		if strings.Contains(company, "iphone") || strings.Contains(company, "mobile") {
 			return VendorInfo{
-				Name:       company,
-				DeviceType: "smartphone",
+				Name:        company,
+				DeviceType:  "smartphone",
 				IsAmbiguous: false,
 			}
 		}
 		if strings.Contains(company, "ipad") {
 			return VendorInfo{
-				Name:       company,
-				DeviceType: "tablet",
+				Name:        company,
+				DeviceType:  "tablet",
 				IsAmbiguous: false,
 			}
 		}
@@ -203,15 +203,15 @@ func inferDeviceType(company string) VendorInfo {
 	if strings.Contains(company, "sony") {
 		if strings.Contains(company, "mobile") {
 			return VendorInfo{
-				Name:       company,
-				DeviceType: "smartphone",
+				Name:        company,
+				DeviceType:  "smartphone",
 				IsAmbiguous: false,
 			}
 		}
 		if strings.Contains(company, "computer") || strings.Contains(company, "playstation") {
 			return VendorInfo{
-				Name:       company,
-				DeviceType: "console",
+				Name:        company,
+				DeviceType:  "console",
 				IsAmbiguous: false,
 			}
 		}
@@ -257,8 +257,8 @@ func inferDeviceType(company string) VendorInfo {
 	if strings.Contains(company, "microsoft") {
 		if strings.Contains(company, "surface") {
 			return VendorInfo{
-				Name:       company,
-				DeviceType: "laptop",
+				Name:        company,
+				DeviceType:  "laptop",
 				IsAmbiguous: false,
 			}
 		}
@@ -273,8 +273,8 @@ func inferDeviceType(company string) VendorInfo {
 	// Consoles específicos
 	if strings.Contains(company, "nintendo") {
 		return VendorInfo{
-			Name:       company,
-			DeviceType: "console",
+			Name:        company,
+			DeviceType:  "console",
 			IsAmbiguous: false,
 		}
 	}
@@ -284,8 +284,8 @@ func inferDeviceType(company string) VendorInfo {
 		strings.Contains(company, "roku") ||
 		strings.Contains(company, "chromecast") {
 		return VendorInfo{
-			Name:       company,
-			DeviceType: "smarttv",
+			Name:        company,
+			DeviceType:  "smarttv",
 			IsAmbiguous: false,
 		}
 	}
@@ -307,40 +307,40 @@ func inferDeviceType(company string) VendorInfo {
 	// Fallback baseado em palavras-chave
 	if strings.Contains(company, "mobile") || strings.Contains(company, "phone") {
 		return VendorInfo{
-			Name:       company,
-			DeviceType: "smartphone",
+			Name:        company,
+			DeviceType:  "smartphone",
 			IsAmbiguous: false,
 		}
 	}
 
 	if strings.Contains(company, "computer") || strings.Contains(company, "laptop") {
 		return VendorInfo{
-			Name:       company,
-			DeviceType: "laptop",
+			Name:        company,
+			DeviceType:  "laptop",
 			IsAmbiguous: false,
 		}
 	}
 
 	if strings.Contains(company, "network") || strings.Contains(company, "router") {
 		return VendorInfo{
-			Name:       company,
-			DeviceType: "router",
+			Name:        company,
+			DeviceType:  "router",
 			IsAmbiguous: false,
 		}
 	}
 
 	if strings.Contains(company, "smart") || strings.Contains(company, "iot") {
 		return VendorInfo{
-			Name:       company,
-			DeviceType: "iot",
+			Name:        company,
+			DeviceType:  "iot",
 			IsAmbiguous: false,
 		}
 	}
 
 	// Completamente desconhecido
 	return VendorInfo{
-		Name:       company,
-		DeviceType: "unknown",
+		Name:        company,
+		DeviceType:  "unknown",
 		IsAmbiguous: false,
 	}
 }

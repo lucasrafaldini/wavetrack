@@ -9,27 +9,27 @@ import (
 
 // Config representa a configuração completa da aplicação
 type Config struct {
-	Network NetworkConfig `yaml:"network"`
-	Logging LoggingConfig `yaml:"logging"`
+	Network  NetworkConfig  `yaml:"network"`
+	Logging  LoggingConfig  `yaml:"logging"`
 	Presence PresenceConfig `yaml:"presence"`
 }
 
 // NetworkConfig contém configurações de rede
 type NetworkConfig struct {
-	Interface string `yaml:"interface"`
-	Channel int `yaml:"channel"`
-	ScanInterval int `yaml:"scan_interval"`
+	Interface    string `yaml:"interface"`
+	Channel      int    `yaml:"channel"`
+	ScanInterval int    `yaml:"scan_interval"`
 }
 
 // LoggingConfig contém configurações de logging
 type LoggingConfig struct {
-	LogDir string `yaml:"log_dir"`
+	LogDir   string `yaml:"log_dir"`
 	LogLevel string `yaml:"log_level"`
 }
 
 // PresenceConfig contém configurações de detecção de presença
 type PresenceConfig struct {
-	TimeoutMinutes int `yaml:"timeout_minutes"`
+	TimeoutMinutes  int `yaml:"timeout_minutes"`
 	SignalThreshold int `yaml:"signal_threshold"`
 }
 
