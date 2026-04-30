@@ -59,8 +59,6 @@ func main() {
 	// Gera histórico dos últimos 7 dias
 	log.Println("\n Gerando histórico dos últimos 7 dias...")
 
-
-
 	for dayOffset := 0; dayOffset < 7; dayOffset++ {
 		date := time.Now().AddDate(0, 0, -dayOffset)
 		dayOfWeek := int(date.Weekday())
