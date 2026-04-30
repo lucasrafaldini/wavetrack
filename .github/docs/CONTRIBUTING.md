@@ -2,7 +2,7 @@
 
 Bem-vindo ao guia de desenvolvimento do WaveTrack! Este documento ajudará você a configurar o ambiente e contribuir com o projeto.
 
-## 🛠️ Setup do Ambiente
+## Setup do Ambiente
 
 ### Pré-requisitos
 
@@ -35,46 +35,46 @@ Extensões recomendadas:
 Configuração `.vscode/settings.json`:
 ```json
 {
-    "go.lintTool": "golangci-lint",
-    "go.formatTool": "goimports",
-    "editor.formatOnSave": true
+ "go.lintTool": "golangci-lint",
+ "go.formatTool": "goimports",
+ "editor.formatOnSave": true
 }
 ```
 
-## 📐 Arquitetura
+## Arquitetura
 
 ```
 ┌─────────────────────────────────────────────────────────┐
-│                     WaveTrack System                     │
+│ WaveTrack System │
 ├─────────────────────────────────────────────────────────┤
-│                                                          │
-│  ┌──────────────┐     ┌──────────────┐                 │
-│  │   Web UI     │────▶│  API Server  │                 │
-│  │ (Dashboard)  │     │   (REST)     │                 │
-│  └──────────────┘     └──────┬───────┘                 │
-│                              │                          │
-│                              ▼                          │
-│  ┌──────────────┐     ┌──────────────┐                 │
-│  │   Storage    │◀────│   Tracker    │                 │
-│  │  (JSON DB)   │     │  (Presence)  │                 │
-│  └──────────────┘     └──────┬───────┘                 │
-│                              │                          │
-│                              ▼                          │
-│  ┌──────────────┐     ┌──────────────┐                 │
-│  │    Logger    │◀────│   Scanner    │                 │
-│  │   (Events)   │     │   (Wi-Fi)    │                 │
-│  └──────────────┘     └──────────────┘                 │
-│                              │                          │
-│                              ▼                          │
-│                       [Network Interface]               │
-│                              │                          │
+│ │
+│ ┌──────────────┐ ┌──────────────┐ │
+│ │ Web UI │────│ API Server │ │
+│ │ (Dashboard) │ │ (REST) │ │
+│ └──────────────┘ └──────┬───────┘ │
+│ │ │
+│ ▼ │
+│ ┌──────────────┐ ┌──────────────┐ │
+│ │ Storage │────│ Tracker │ │
+│ │ (JSON DB) │ │ (Presence) │ │
+│ └──────────────┘ └──────┬───────┘ │
+│ │ │
+│ ▼ │
+│ ┌──────────────┐ ┌──────────────┐ │
+│ │ Logger │────│ Scanner │ │
+│ │ (Events) │ │ (Wi-Fi) │ │
+│ └──────────────┘ └──────────────┘ │
+│ │ │
+│ ▼ │
+│ [Network Interface] │
+│ │ │
 └──────────────────────────────┼──────────────────────────┘
-                               │
-                               ▼
-                        [Wi-Fi Packets]
+ │
+ ▼
+ [Wi-Fi Packets]
 ```
 
-## 📦 Estrutura de Pacotes
+## Estrutura de Pacotes
 
 ### `internal/wifi`
 Responsável pela captura de pacotes Wi-Fi usando libpcap.
@@ -128,7 +128,7 @@ Servidor HTTP e endpoints REST.
 ### `internal/config`
 Gerenciamento de configuração YAML.
 
-## 🔧 Desenvolvimento
+## Desenvolvimento
 
 ### Adicionar Nova Feature
 
@@ -184,25 +184,25 @@ package scanner
 
 // Scanner gerencia a captura de pacotes na interface de rede
 type Scanner struct {
-    // ...
+ // ...
 }
 
 // Start inicia o processo de captura
 func (s *Scanner) Start() error {
-    // ...
+ // ...
 }
 ```
 
 #### Error Handling
 ```go
-// ✅ Bom
+// Bom
 if err != nil {
-    return fmt.Errorf("erro ao processar dispositivo: %w", err)
+ return fmt.Errorf("erro ao processar dispositivo: %w", err)
 }
 
-// ❌ Evitar
+// Evitar
 if err != nil {
-    log.Println(err)
+ log.Println(err)
 }
 ```
 
@@ -211,16 +211,16 @@ if err != nil {
 #### Estrutura de Teste
 ```go
 func TestScanner_Start(t *testing.T) {
-    // Arrange
-    scanner := NewScanner("test0")
-    
-    // Act
-    err := scanner.Start()
-    
-    // Assert
-    if err == nil {
-        t.Error("Expected error for invalid interface")
-    }
+ // Arrange
+ scanner := NewScanner("test0")
+
+ // Act
+ err := scanner.Start()
+
+ // Assert
+ if err == nil {
+ t.Error("Expected error for invalid interface")
+ }
 }
 ```
 
@@ -256,7 +256,7 @@ sudo dlv debug cmd/wavetrack/main.go
 log.Printf("[DEBUG] Device: %+v", device)
 ```
 
-## 🎨 Frontend
+## Frontend
 
 ### Estrutura do HTML
 O dashboard é um SPA (Single Page Application) em vanilla JavaScript.
@@ -271,27 +271,27 @@ O dashboard é um SPA (Single Page Application) em vanilla JavaScript.
 1. **Adicionar HTML**
 ```html
 <div id="myNewFeature">
-    <!-- conteúdo -->
+ <!-- conteúdo -->
 </div>
 ```
 
 2. **Adicionar JavaScript**
 ```javascript
 async function loadMyFeature() {
-    const response = await fetch('/api/my-endpoint');
-    const data = await response.json();
-    // Renderizar...
+ const response = await fetch('/api/my-endpoint');
+ const data = await response.json();
+ // Renderizar...
 }
 ```
 
 3. **Adicionar CSS**
 ```css
 .my-feature {
-    /* estilos */
+ /* estilos */
 }
 ```
 
-## 🚀 Build e Deploy
+## Build e Deploy
 
 ### Build para Produção
 ```bash
@@ -310,7 +310,7 @@ GOOS=windows GOARCH=amd64 go build -o wavetrack.exe cmd/wavetrack/main.go
 go build -ldflags="-s -w" -o wavetrack cmd/wavetrack/main.go
 ```
 
-## 📝 Convenções de Commit
+## Convenções de Commit
 
 Seguimos [Conventional Commits](https://www.conventionalcommits.org/):
 
@@ -329,7 +329,7 @@ fix: corrigir detecção de timeout
 docs: atualizar README com instruções de API
 ```
 
-## 🐛 Debugging de Problemas Comuns
+## Debugging de Problemas Comuns
 
 ### Scanner não detecta dispositivos
 ```go
@@ -352,14 +352,14 @@ log.Printf("Server listening on :%d", port)
 // Headers devem estar configurados
 ```
 
-## 📚 Recursos Úteis
+## Recursos Úteis
 
 - [Go Documentation](https://go.dev/doc/)
 - [gopacket Guide](https://github.com/google/gopacket)
 - [802.11 Standard](https://standards.ieee.org/ieee/802.11/)
 - [pcap Programming](https://www.tcpdump.org/pcap.html)
 
-## 🤝 Contribuindo
+## Contribuindo
 
 1. Fork o projeto
 2. Crie sua branch de feature
@@ -376,11 +376,11 @@ log.Printf("Server listening on :%d", port)
 - [ ] Commits seguem Conventional Commits
 - [ ] Branch está atualizada com main
 
-## 📞 Suporte
+## Suporte
 
 - Issues: [GitHub Issues](https://github.com/lucasrafaldini/wavetrack/issues)
 - Discussões: [GitHub Discussions](https://github.com/lucasrafaldini/wavetrack/discussions)
 
-## 📄 Licença
+## Licença
 
 MIT License - veja LICENSE para detalhes.

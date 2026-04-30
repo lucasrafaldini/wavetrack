@@ -17,14 +17,14 @@ func main() {
 	}
 	defer db.Close()
 
-	log.Println("🌱 Iniciando seed de dados históricos...")
+	log.Println(" Iniciando seed de dados históricos...")
 
 	// Lista de funcionários fake
 	employees := []struct {
-		Name       string
-		MAC        string
+		Name string
+		MAC string
 		DeviceType string
-		Vendor     string
+		Vendor string
 		Department string
 	}{
 		{"Lucas Rafaldini", "00:11:22:33:44:01", "iphone-16", "Apple", "TI"},
@@ -42,7 +42,7 @@ func main() {
 	}
 
 	// Cadastra funcionários
-	log.Println("📝 Cadastrando funcionários fake...")
+	log.Println(" Cadastrando funcionários fake...")
 	for _, emp := range employees {
 		_, err := db.Exec(`
 			INSERT OR REPLACE INTO employees (mac_address, name, department, custom_device_type, custom_vendor, created_at, updated_at)
@@ -50,14 +50,14 @@ func main() {
 		`, emp.MAC, emp.Name, emp.Department, emp.DeviceType, emp.Vendor)
 
 		if err != nil {
-			log.Printf("⚠️  Erro ao inserir %s: %v", emp.Name, err)
+			log.Printf(" Erro ao inserir %s: %v", emp.Name, err)
 		} else {
-			log.Printf("   ✓ %s cadastrado", emp.Name)
+			log.Printf(" %s cadastrado", emp.Name)
 		}
 	}
 
 	// Gera histórico dos últimos 7 dias
-	log.Println("\n📊 Gerando histórico dos últimos 7 dias...")
+	log.Println("\n Gerando histórico dos últimos 7 dias...")
 
 	rand.Seed(time.Now().UnixNano())
 
@@ -65,7 +65,7 @@ func main() {
 		date := time.Now().AddDate(0, 0, -dayOffset)
 		dayOfWeek := int(date.Weekday())
 
-		log.Printf("\n📅 Dia: %s", date.Format("02/01/2006"))
+		log.Printf("\n Dia: %s", date.Format("02/01/2006"))
 
 		// Define quantos funcionários estarão presentes (menos no fim de semana)
 		numPresent := 5 + (dayOffset % 4) + (dayOfWeek % 3)
@@ -97,13 +97,13 @@ func main() {
 
 			// Insere device
 			_, err := db.Exec(`
-				INSERT OR REPLACE INTO devices 
+				INSERT OR REPLACE INTO devices
 				(mac_address, type, vendor, signal_strength, frequency, channel, first_seen, last_seen, is_active)
 				VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
 			`, emp.MAC, emp.DeviceType, emp.Vendor, -50, 2437, 6, arrivalTime, departureTime, false)
 
 			if err != nil {
-				log.Printf("   ⚠️  Erro ao inserir device %s: %v", emp.Name, err)
+				log.Printf(" Erro ao inserir device %s: %v", emp.Name, err)
 				continue
 			}
 
@@ -114,7 +114,7 @@ func main() {
 			`, emp.MAC, arrivalTime.Format("2006-01-02 15:04:05"))
 
 			if err != nil {
-				log.Printf("   ⚠️  Erro ao inserir arrival %s: %v", emp.Name, err)
+				log.Printf(" Erro ao inserir arrival %s: %v", emp.Name, err)
 			}
 
 			// Evento de departure
@@ -124,10 +124,10 @@ func main() {
 			`, emp.MAC, departureTime.Format("2006-01-02 15:04:05"))
 
 			if err != nil {
-				log.Printf("   ⚠️  Erro ao inserir departure %s: %v", emp.Name, err)
+				log.Printf(" Erro ao inserir departure %s: %v", emp.Name, err)
 			}
 
-			log.Printf("   ✓ %s: %s - %s (%dh%dm)",
+			log.Printf(" %s: %s - %s (%dh%dm)",
 				emp.Name,
 				arrivalTime.Format("15:04"),
 				departureTime.Format("15:04"),
@@ -135,6 +135,6 @@ func main() {
 		}
 	}
 
-	log.Println("\n✅ Seed concluído com sucesso!")
-	log.Println("🎯 Execute o wavetrack e acesse a aba 'Histórico (7 dias)' para ver os dados")
+	log.Println("\n Seed concluído com sucesso!")
+	log.Println(" Execute o wavetrack e acesse a aba 'Histórico (7 dias)' para ver os dados")
 }

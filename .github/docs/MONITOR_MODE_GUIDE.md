@@ -14,18 +14,18 @@ O sistema agora detecta automaticamente se a interface Wi-Fi suporta **modo moni
 
 | Campo | Modo Monitor (Linux com antena) | Modo Compatibilidade (macOS) |
 |-------|----------------------------------|------------------------------|
-| MAC Address | ✅ Sim | ✅ Sim |
-| Vendor/Tipo | ✅ Sim (via OUI) | ✅ Sim (via OUI) |
-| **RSSI (dBm)** | ✅ **-30 a -90 dBm** | ❌ 0 (N/A) |
-| **Frequência** | ✅ **2400-7115 MHz** | ❌ 0 (N/A) |
-| **Canal** | ✅ **1-177** | ❌ 0 (N/A) |
+| MAC Address | Sim | Sim |
+| Vendor/Tipo | Sim (via OUI) | Sim (via OUI) |
+| **RSSI (dBm)** | **-30 a -90 dBm** | 0 (N/A) |
+| **Frequência** | **2400-7115 MHz** | 0 (N/A) |
+| **Canal** | **1-177** | 0 (N/A) |
 
 ## Logs ao Iniciar
 
 ### Com Modo Monitor (Linux):
 ```
-✓ Modo monitor 802.11 ativado - captura completa habilitada
-✓ Dados disponíveis: RSSI, frequência, canal, taxa de transmissão
+ Modo monitor 802.11 ativado - captura completa habilitada
+ Dados disponíveis: RSSI, frequência, canal, taxa de transmissão
 Scanner iniciado na interface wlan0
 Novo dispositivo detectado: aa:bb:cc:dd:ee:ff [Apple - smartphone] | -45 dBm | 2437 MHz (Canal 6)
 ```
@@ -33,7 +33,7 @@ Novo dispositivo detectado: aa:bb:cc:dd:ee:ff [Apple - smartphone] | -45 dBm | 2
 ### Sem Modo Monitor (macOS):
 ```
 Modo 802.11 não disponível, usando modo ARP (compatibilidade)
-⚠️  Dados limitados: sem RSSI, frequência ou canal
+ Dados limitados: sem RSSI, frequência ou canal
 Scanner iniciado na interface en0
 Novo dispositivo detectado: aa:bb:cc:dd:ee:ff [Apple - smartphone]
 ```
@@ -45,7 +45,7 @@ Novo dispositivo detectado: aa:bb:cc:dd:ee:ff [Apple - smartphone]
 **Modo Monitor:**
 ```
 ━━━━━━━━━━ -45 dBm
-📡 Canal 6 (2437 MHz)
+ Canal 6 (2437 MHz)
 ```
 
 **Modo Compatibilidade:**
@@ -97,7 +97,7 @@ sudo ./wavetrack -config config.yaml
 ### 3. Verifique os logs:
 Deve aparecer:
 ```
-✓ Modo monitor 802.11 ativado - captura completa habilitada
+ Modo monitor 802.11 ativado - captura completa habilitada
 ```
 
 ### 4. No dashboard:
@@ -109,11 +109,11 @@ Dispositivos mostrarão RSSI real, frequência e canal.
 
 ```json
 {
-  "mac_address": "aa:bb:cc:dd:ee:ff",
-  "signal_strength": -45,
-  "frequency": 2437,
-  "channel": 6,
-  ...
+ "mac_address": "aa:bb:cc:dd:ee:ff",
+ "signal_strength": -45,
+ "frequency": 2437,
+ "channel": 6,
+ ...
 }
 ```
 

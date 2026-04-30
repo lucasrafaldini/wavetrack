@@ -1,32 +1,32 @@
-# 📊 Sistema de Abas com Histórico - WaveTrack
+# Sistema de Abas com Histórico - WaveTrack
 
-## 🎯 O que foi implementado
+## O que foi implementado
 
 Transformamos o dashboard em um sistema de abas com duas visualizações principais:
 
-### 1️⃣ **Aba "Tempo Real"** (anteriormente "Dispositivos Detectados")
+### 1 **Aba "Tempo Real"** (anteriormente "Dispositivos Detectados")
 - Mantém toda a funcionalidade existente
 - Mostra dispositivos conectados no momento
 - Atualização automática a cada 5 segundos
 - Filtros, ordenação e cadastro de funcionários
 
-### 2️⃣ **Aba "Histórico (7 dias)"** (NOVA)
+### 2 **Aba "Histórico (7 dias)"** (NOVA)
 - Visualização dos últimos 7 dias de presença
 - Dados mockados variados para testes
 - Um card por dia com:
-  - Data (Hoje, Ontem, dia da semana)
-  - Total de funcionários presentes
-  - Total de dispositivos
-  - Total de horas trabalhadas
-  - Tabela detalhada por funcionário:
-    - Nome
-    - Tipo de dispositivo
-    - Primeira chegada
-    - Última saída
-    - Tempo online (formatado em horas e minutos)
-    - Percentual de presença (badge colorido)
+ - Data (Hoje, Ontem, dia da semana)
+ - Total de funcionários presentes
+ - Total de dispositivos
+ - Total de horas trabalhadas
+ - Tabela detalhada por funcionário:
+ - Nome
+ - Tipo de dispositivo
+ - Primeira chegada
+ - Última saída
+ - Tempo online (formatado em horas e minutos)
+ - Percentual de presença (badge colorido)
 
-## 📁 Arquivos Modificados
+## Arquivos Modificados
 
 ### 1. `web/index.html`
 **Adicionados:**
@@ -44,14 +44,14 @@ Transformamos o dashboard em um sistema de abas com duas visualizações princip
 - Structs: `HistoryDay` e `HistoryEmployee`
 - Função `handleHistory7Days()` com geração de dados mockados
 - Dados variados incluindo:
-  - 12 nomes diferentes de funcionários
-  - 12 tipos de dispositivos variados
-  - Horários de chegada variando entre 7h-10h
-  - Duração de presença variando entre 4h-10h
-  - Menos funcionários nos finais de semana
-  - Cálculo de percentual de presença baseado em jornada de 8h
+ - 12 nomes diferentes de funcionários
+ - 12 tipos de dispositivos variados
+ - Horários de chegada variando entre 7h-10h
+ - Duração de presença variando entre 4h-10h
+ - Menos funcionários nos finais de semana
+ - Cálculo de percentual de presença baseado em jornada de 8h
 
-## 🧪 Dados Mockados
+## Dados Mockados
 
 Os dados de teste incluem variedade de:
 
@@ -74,38 +74,38 @@ Os dados de teste incluem variedade de:
 - Durações variadas (4h-10h)
 - Percentuais de presença calculados automaticamente
 
-## 🚀 Como Testar
+## Como Testar
 
 1. **Compilar o projeto:**
-   ```bash
-   cd /Users/outis/Desktop/wavetrack
-   go build -o wavetrack ./cmd/wavetrack
-   ```
+ ```bash
+ cd /Users/outis/Desktop/wavetrack
+ go build -o wavetrack ./cmd/wavetrack
+ ```
 
 2. **Iniciar o servidor:**
-   ```bash
-   sudo ./wavetrack
-   ```
+ ```bash
+ sudo ./wavetrack
+ ```
 
 3. **Acessar no navegador:**
-   ```
-   http://localhost:8080
-   ```
+ ```
+ http://localhost:8080
+ ```
 
 4. **Testar as abas:**
-   - Clique em "🔴 Tempo Real" para ver dispositivos conectados agora
-   - Clique em "📊 Histórico (7 dias)" para ver dados dos últimos 7 dias
-   - Observe que o auto-refresh só funciona na aba "Tempo Real"
+ - Clique em " Tempo Real" para ver dispositivos conectados agora
+ - Clique em " Histórico (7 dias)" para ver dados dos últimos 7 dias
+ - Observe que o auto-refresh só funciona na aba "Tempo Real"
 
 5. **Testar o endpoint diretamente:**
-   ```bash
-   curl http://localhost:8080/api/history/7days | jq
-   ```
+ ```bash
+ curl http://localhost:8080/api/history/7days | jq
+ ```
 
-## 🎨 Detalhes Visuais
+## Detalhes Visuais
 
 ### Aba Tempo Real
-- Mantém o título "🔍 Dispositivos Conectados"
+- Mantém o título " Dispositivos Conectados"
 - Todas as funcionalidades anteriores preservadas
 - Auto-refresh a cada 5 segundos
 
@@ -114,11 +114,11 @@ Os dados de teste incluem variedade de:
 - Data em destaque (Hoje/Ontem/Dia da semana)
 - Estatísticas resumidas (funcionários, dispositivos, total de horas)
 - Tabela detalhada com:
-  - Nome do funcionário em destaque
-  - Ícone e tipo de dispositivo
-  - Horários formatados (HH:MM)
-  - Duração em cor roxa destacada
-  - Badge de percentual com fundo roxo
+ - Nome do funcionário em destaque
+ - Ícone e tipo de dispositivo
+ - Horários formatados (HH:MM)
+ - Duração em cor roxa destacada
+ - Badge de percentual com fundo roxo
 
 ### Sistema de Abas
 - Abas com efeito hover suave
@@ -126,7 +126,7 @@ Os dados de teste incluem variedade de:
 - Transição suave entre abas
 - Design responsivo
 
-## 🔄 Próximos Passos (Opcional)
+## Próximos Passos (Opcional)
 
 Para substituir dados mockados por dados reais:
 
@@ -136,7 +136,7 @@ Para substituir dados mockados por dados reais:
 4. Adicionar filtros por período, funcionário, departamento
 5. Adicionar exportação para PDF/CSV
 
-## 📝 Notas Técnicas
+## Notas Técnicas
 
 - **Performance**: Auto-refresh desabilitado na aba histórico para economizar recursos
 - **Compatibilidade**: Funciona em todos os navegadores modernos
@@ -144,13 +144,13 @@ Para substituir dados mockados por dados reais:
 - **Dados**: Mockados são regenerados a cada requisição (não persistem)
 - **Cálculos**: Percentual baseado em jornada de 8h (100% = 8 horas trabalhadas)
 
-## ✨ Melhorias Implementadas
+## Melhorias Implementadas
 
-1. ✅ Sistema de abas responsivo
-2. ✅ Histórico de 7 dias com dados mockados variados
-3. ✅ Formatação inteligente de datas em português
-4. ✅ Cálculo automático de percentual de presença
-5. ✅ Visual consistente com o design existente
-6. ✅ Otimização: auto-refresh apenas quando necessário
-7. ✅ Variedade nos dados de teste (nomes, dispositivos, horários)
-8. ✅ Dados realistas (menos presença em fins de semana)
+1. Sistema de abas responsivo
+2. Histórico de 7 dias com dados mockados variados
+3. Formatação inteligente de datas em português
+4. Cálculo automático de percentual de presença
+5. Visual consistente com o design existente
+6. Otimização: auto-refresh apenas quando necessário
+7. Variedade nos dados de teste (nomes, dispositivos, horários)
+8. Dados realistas (menos presença em fins de semana)

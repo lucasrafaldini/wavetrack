@@ -21,44 +21,44 @@ import (
 // Server gerencia a API web
 type Server struct {
 	storage *storage.Storage
-	cfg     *config.Config
+	cfg *config.Config
 }
 
 // NewServer cria uma nova instância do servidor API
 func NewServer(storage *storage.Storage, cfg *config.Config) *Server {
 	return &Server{
 		storage: storage,
-		cfg:     cfg,
+		cfg: cfg,
 	}
 }
 
 // DeviceResponse representa um dispositivo na resposta da API
 type DeviceResponse struct {
-	MACAddress     string     `json:"mac_address"`
-	Type           string     `json:"type"`
-	Vendor         string     `json:"vendor"`
-	SignalStrength int        `json:"signal_strength"`
-	Frequency      int        `json:"frequency"`
-	Channel        int        `json:"channel"`
-	FirstSeen      time.Time  `json:"first_seen"`
-	LastSeen       time.Time  `json:"last_seen"`
-	IsActive       bool       `json:"is_active"`
-	IsAmbiguous    bool       `json:"is_ambiguous"`   // true se o fabricante faz múltiplos tipos
-	PossibleTypes  []string   `json:"possible_types"` // tipos possíveis quando ambíguo
-	EmployeeName   string     `json:"employee_name,omitempty"`
-	Department     string     `json:"department,omitempty"`
+	MACAddress string `json:"mac_address"`
+	Type string `json:"type"`
+	Vendor string `json:"vendor"`
+	SignalStrength int `json:"signal_strength"`
+	Frequency int `json:"frequency"`
+	Channel int `json:"channel"`
+	FirstSeen time.Time `json:"first_seen"`
+	LastSeen time.Time `json:"last_seen"`
+	IsActive bool `json:"is_active"`
+	IsAmbiguous bool `json:"is_ambiguous"` // true se o fabricante faz múltiplos tipos
+	PossibleTypes []string `json:"possible_types"` // tipos possíveis quando ambíguo
+	EmployeeName string `json:"employee_name,omitempty"`
+	Department string `json:"department,omitempty"`
 	FirstSeenToday *time.Time `json:"first_seen_today,omitempty"`
-	OnlineDuration int        `json:"online_duration_seconds"`
+	OnlineDuration int `json:"online_duration_seconds"`
 }
 
 // AssociateDeviceRequest representa uma requisição para associar dispositivo a funcionário
 type AssociateDeviceRequest struct {
-	MACAddress       string `json:"mac_address"`
-	OldMACAddress    string `json:"old_mac_address,omitempty"` // Para edição com mudança de MAC
-	Name             string `json:"name"`
-	Department       string `json:"department"`
+	MACAddress string `json:"mac_address"`
+	OldMACAddress string `json:"old_mac_address,omitempty"` // Para edição com mudança de MAC
+	Name string `json:"name"`
+	Department string `json:"department"`
 	CustomDeviceType string `json:"custom_device_type,omitempty"`
-	CustomVendor     string `json:"custom_vendor,omitempty"`
+	CustomVendor string `json:"custom_vendor,omitempty"`
 }
 
 // DeviceVendorDetailRequest representa uma requisição para detalhes do vendor
@@ -128,17 +128,17 @@ func (s *Server) handleDevices(w http.ResponseWriter, r *http.Request) {
 		employee, _ := s.storage.GetEmployeeByMAC(device.MACAddress)
 
 		dr := DeviceResponse{
-			MACAddress:     device.MACAddress,
-			Type:           device.Type,
-			Vendor:         device.Vendor,
+			MACAddress: device.MACAddress,
+			Type: device.Type,
+			Vendor: device.Vendor,
 			SignalStrength: device.SignalStrength,
-			Frequency:      device.Frequency,
-			Channel:        device.Channel,
-			FirstSeen:      device.FirstSeen,
-			LastSeen:       device.LastSeen,
-			IsActive:       device.IsActive && now.Sub(device.LastSeen) < offlineThreshold,
-			IsAmbiguous:    device.IsAmbiguous,
-			PossibleTypes:  device.PossibleTypes,
+			Frequency: device.Frequency,
+			Channel: device.Channel,
+			FirstSeen: device.FirstSeen,
+			LastSeen: device.LastSeen,
+			IsActive: device.IsActive && now.Sub(device.LastSeen) < offlineThreshold,
+			IsAmbiguous: device.IsAmbiguous,
+			PossibleTypes: device.PossibleTypes,
 		}
 
 		if employee != nil {
@@ -243,7 +243,7 @@ func (s *Server) handleAssociate(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Aviso ao deletar MAC antigo: %v", err)
 		}
 
-		log.Printf("✓ Histórico atualizado com sucesso")
+		log.Printf(" Histórico atualizado com sucesso")
 	}
 
 	// Se o nome mudou, atualiza em todos os eventos históricos
@@ -265,14 +265,14 @@ func (s *Server) handleAssociate(w http.ResponseWriter, r *http.Request) {
 
 	// Se o dispositivo não existe, cria um registro básico
 	if device == nil {
-		log.Printf("⚠️  Dispositivo %s não encontrado, criando registro básico", req.MACAddress)
+		log.Printf(" Dispositivo %s não encontrado, criando registro básico", req.MACAddress)
 		newDevice := &models.Device{
 			MACAddress: req.MACAddress,
-			Type:       "unknown",
-			Vendor:     "unknown",
-			FirstSeen:  time.Now(),
-			LastSeen:   time.Now(),
-			IsActive:   false,
+			Type: "unknown",
+			Vendor: "unknown",
+			FirstSeen: time.Now(),
+			LastSeen: time.Now(),
+			IsActive: false,
 		}
 		if err := s.storage.SaveDevice(newDevice); err != nil {
 			log.Printf("Erro ao criar dispositivo: %v", err)
@@ -283,11 +283,11 @@ func (s *Server) handleAssociate(w http.ResponseWriter, r *http.Request) {
 
 	// Cria ou atualiza funcionário
 	employee := &models.Employee{
-		MACAddress:       req.MACAddress,
-		Name:             req.Name,
-		Department:       req.Department,
+		MACAddress: req.MACAddress,
+		Name: req.Name,
+		Department: req.Department,
 		CustomDeviceType: req.CustomDeviceType,
-		CustomVendor:     req.CustomVendor,
+		CustomVendor: req.CustomVendor,
 	}
 
 	if err := s.storage.SaveEmployee(employee); err != nil {
@@ -296,7 +296,7 @@ func (s *Server) handleAssociate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("✓ Funcionário cadastrado: %s (%s) - %s", req.Name, req.Department, req.MACAddress)
+	log.Printf(" Funcionário cadastrado: %s (%s) - %s", req.Name, req.Department, req.MACAddress)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
@@ -334,7 +334,7 @@ func (s *Server) handleEmployeeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("✓ Funcionário deletado: %s (%s) - Histórico preservado para relatórios", employee.Name, macAddress)
+	log.Printf(" Funcionário deletado: %s (%s) - Histórico preservado para relatórios", employee.Name, macAddress)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
@@ -394,13 +394,13 @@ func (s *Server) handleEvents(w http.ResponseWriter, r *http.Request) {
 
 // EmployeeReportItem representa um item do relatório diário de um funcionário
 type EmployeeReportItem struct {
-	Name              string     `json:"name"`
-	Department        string     `json:"department"`
-	MACAddress        string     `json:"mac_address"`
-	FirstArrival      *time.Time `json:"first_arrival,omitempty"`
-	LastDeparture     *time.Time `json:"last_departure,omitempty"`
-	OnlineDuration    int        `json:"online_duration_seconds"`
-	IsCurrentlyOnline bool       `json:"is_currently_online"`
+	Name string `json:"name"`
+	Department string `json:"department"`
+	MACAddress string `json:"mac_address"`
+	FirstArrival *time.Time `json:"first_arrival,omitempty"`
+	LastDeparture *time.Time `json:"last_departure,omitempty"`
+	OnlineDuration int `json:"online_duration_seconds"`
+	IsCurrentlyOnline bool `json:"is_currently_online"`
 }
 
 // handleReportToday retorna relatório de presença do dia atual
@@ -428,7 +428,7 @@ func (s *Server) handleReportToday(w http.ResponseWriter, r *http.Request) {
 
 	for _, emp := range employees {
 		item := EmployeeReportItem{
-			Name:       emp.Name,
+			Name: emp.Name,
 			Department: emp.Department,
 			MACAddress: emp.MACAddress,
 		}
@@ -464,21 +464,21 @@ func (s *Server) handleReportToday(w http.ResponseWriter, r *http.Request) {
 
 // HistoryDay representa um dia no histórico
 type HistoryDay struct {
-	Date           string            `json:"date"`
-	TotalEmployees int               `json:"total_employees"`
-	TotalDevices   int               `json:"total_devices"`
-	TotalHours     float64           `json:"total_hours"`
-	Employees      []HistoryEmployee `json:"employees"`
+	Date string `json:"date"`
+	TotalEmployees int `json:"total_employees"`
+	TotalDevices int `json:"total_devices"`
+	TotalHours float64 `json:"total_hours"`
+	Employees []HistoryEmployee `json:"employees"`
 }
 
 // HistoryEmployee representa um funcionário no histórico
 type HistoryEmployee struct {
-	Name               string `json:"name"`
-	DeviceType         string `json:"device_type"`
-	FirstArrival       string `json:"first_arrival"`
-	LastDeparture      string `json:"last_departure"`
-	DurationSeconds    int    `json:"duration_seconds"`
-	PresencePercentage int    `json:"presence_percentage"`
+	Name string `json:"name"`
+	DeviceType string `json:"device_type"`
+	FirstArrival string `json:"first_arrival"`
+	LastDeparture string `json:"last_departure"`
+	DurationSeconds int `json:"duration_seconds"`
+	PresencePercentage int `json:"presence_percentage"`
 }
 
 // handleHistory7Days retorna histórico dos últimos 7 dias do banco de dados
@@ -523,11 +523,11 @@ func (s *Server) handleHistory7Days(w http.ResponseWriter, r *http.Request) {
 			}
 
 			employees = append(employees, HistoryEmployee{
-				Name:               emp.Name,
-				DeviceType:         emp.DeviceType,
-				FirstArrival:       firstArrival,
-				LastDeparture:      lastDeparture,
-				DurationSeconds:    emp.DurationSeconds,
+				Name: emp.Name,
+				DeviceType: emp.DeviceType,
+				FirstArrival: firstArrival,
+				LastDeparture: lastDeparture,
+				DurationSeconds: emp.DurationSeconds,
 				PresencePercentage: presencePercent,
 			})
 
@@ -535,11 +535,11 @@ func (s *Server) handleHistory7Days(w http.ResponseWriter, r *http.Request) {
 		}
 
 		history = append(history, HistoryDay{
-			Date:           day.Date.Format("2006-01-02"),
+			Date: day.Date.Format("2006-01-02"),
 			TotalEmployees: day.TotalEmployees,
-			TotalDevices:   day.TotalDevices,
-			TotalHours:     float64(totalSeconds) / 3600.0,
-			Employees:      employees,
+			TotalDevices: day.TotalDevices,
+			TotalHours: float64(totalSeconds) / 3600.0,
+			Employees: employees,
 		})
 	}
 
@@ -611,7 +611,7 @@ func (s *Server) SearchVendorsByPattern(w http.ResponseWriter, r *http.Request) 
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"pattern": req.Pattern,
 		"vendors": vendors,
-		"count":   len(vendors),
+		"count": len(vendors),
 	}); err != nil {
 		log.Printf("Erro ao codificar resposta: %v", err)
 	}
@@ -631,8 +631,8 @@ func (s *Server) GetTopVendors(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
 		"top_vendors": vendors,
-		"limit":       limit,
-		"count":       len(vendors),
+		"limit": limit,
+		"count": len(vendors),
 	}); err != nil {
 		log.Printf("Erro ao codificar resposta: %v", err)
 	}
@@ -681,12 +681,12 @@ func (s *Server) handleCleanupInactive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("🧹 Limpeza manual iniciada via API...")
+	log.Println(" Limpeza manual iniciada via API...")
 
 	// 1. Conta dispositivos não cadastrados antes da limpeza
 	totalBefore, inactiveBefore, err := s.storage.GetUnregisteredDevicesCount()
 	if err != nil {
-		log.Printf("❌ Erro ao contar dispositivos: %v", err)
+		log.Printf(" Erro ao contar dispositivos: %v", err)
 		http.Error(w, "Erro ao contar dispositivos", http.StatusInternalServerError)
 		return
 	}
@@ -694,7 +694,7 @@ func (s *Server) handleCleanupInactive(w http.ResponseWriter, r *http.Request) {
 	// 2. Remove dispositivos não cadastrados inativos IMEDIATAMENTE (sem espera)
 	removedDevices, err := s.storage.CleanupUnregisteredDevices(0)
 	if err != nil {
-		log.Printf("❌ Erro na limpeza de dispositivos: %v", err)
+		log.Printf(" Erro na limpeza de dispositivos: %v", err)
 		http.Error(w, "Erro na limpeza de dispositivos", http.StatusInternalServerError)
 		return
 	}
@@ -702,7 +702,7 @@ func (s *Server) handleCleanupInactive(w http.ResponseWriter, r *http.Request) {
 	// 3. Remove eventos antigos (mantém últimos 30 dias)
 	removedEvents, err := s.storage.CleanupOldEvents(30)
 	if err != nil {
-		log.Printf("❌ Erro na limpeza de eventos: %v", err)
+		log.Printf(" Erro na limpeza de eventos: %v", err)
 		http.Error(w, "Erro na limpeza de eventos", http.StatusInternalServerError)
 		return
 	}
@@ -710,27 +710,27 @@ func (s *Server) handleCleanupInactive(w http.ResponseWriter, r *http.Request) {
 	// 4. Relatório final
 	totalAfter, inactiveAfter, err := s.storage.GetUnregisteredDevicesCount()
 	if err != nil {
-		log.Printf("❌ Erro ao contar dispositivos finais: %v", err)
+		log.Printf(" Erro ao contar dispositivos finais: %v", err)
 		http.Error(w, "Erro ao contar dispositivos", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("✅ Limpeza manual concluída:")
-	log.Printf("   📱 Dispositivos removidos: %d", removedDevices)
-	log.Printf("   📋 Eventos removidos: %d", removedEvents)
-	log.Printf("   📊 Dispositivos não cadastrados: %d → %d", totalBefore, totalAfter)
-	log.Printf("   😴 Dispositivos inativos: %d → %d", inactiveBefore, inactiveAfter)
+	log.Printf(" Limpeza manual concluída:")
+	log.Printf(" Dispositivos removidos: %d", removedDevices)
+	log.Printf(" Eventos removidos: %d", removedEvents)
+	log.Printf(" Dispositivos não cadastrados: %d → %d", totalBefore, totalAfter)
+	log.Printf(" Dispositivos inativos: %d → %d", inactiveBefore, inactiveAfter)
 
 	// Retorna resposta
 	response := map[string]interface{}{
-		"success":         true,
+		"success": true,
 		"removed_devices": removedDevices,
-		"removed_events":  removedEvents,
-		"total_before":    totalBefore,
-		"total_after":     totalAfter,
+		"removed_events": removedEvents,
+		"total_before": totalBefore,
+		"total_after": totalAfter,
 		"inactive_before": inactiveBefore,
-		"inactive_after":  inactiveAfter,
-		"message":         fmt.Sprintf("Limpeza concluída: %d dispositivos e %d eventos removidos", removedDevices, removedEvents),
+		"inactive_after": inactiveAfter,
+		"message": fmt.Sprintf("Limpeza concluída: %d dispositivos e %d eventos removidos", removedDevices, removedEvents),
 	}
 
 	w.Header().Set("Content-Type", "application/json")
@@ -756,9 +756,9 @@ func (s *Server) handleGenerateQRCode(w http.ResponseWriter, r *http.Request) {
 
 	// Salva no banco
 	regToken := &models.RegistrationToken{
-		Token:     token,
+		Token: token,
 		ExpiresAt: expiresAt,
-		Used:      false,
+		Used: false,
 		CreatedAt: time.Now(),
 	}
 
@@ -785,13 +785,13 @@ func (s *Server) handleGenerateQRCode(w http.ResponseWriter, r *http.Request) {
 	// Converte para base64
 	qrBase64 := base64.StdEncoding.EncodeToString(qrCode)
 
-	log.Printf("✓ QR Code gerado: %s (expira em 24h)", registerURL)
+	log.Printf(" QR Code gerado: %s (expira em 24h)", registerURL)
 
 	// Retorna resposta
 	response := map[string]interface{}{
-		"token":      token,
-		"url":        registerURL,
-		"qr_code":    fmt.Sprintf("data:image/png;base64,%s", qrBase64),
+		"token": token,
+		"url": registerURL,
+		"qr_code": fmt.Sprintf("data:image/png;base64,%s", qrBase64),
 		"expires_at": expiresAt.Format(time.RFC3339),
 		"expires_in": "24 horas",
 	}
@@ -843,7 +843,7 @@ func (s *Server) handleValidateToken(w http.ResponseWriter, r *http.Request) {
 
 	// Token válido
 	response := map[string]interface{}{
-		"valid":      true,
+		"valid": true,
 		"expires_at": regToken.ExpiresAt.Format(time.RFC3339),
 	}
 
@@ -904,7 +904,7 @@ func (s *Server) handleRegistrationSubmit(w http.ResponseWriter, r *http.Request
 	}
 
 	if macAddress == "" {
-		log.Printf("⚠️  Não foi possível detectar MAC address para %s", submission.Name)
+		log.Printf(" Não foi possível detectar MAC address para %s", submission.Name)
 		http.Error(w, "Não foi possível detectar seu dispositivo. Tente conectar ao Wi-Fi primeiro.", http.StatusBadRequest)
 		return
 	}
@@ -921,11 +921,11 @@ func (s *Server) handleRegistrationSubmit(w http.ResponseWriter, r *http.Request
 		// Cria dispositivo básico
 		device = &models.Device{
 			MACAddress: macAddress,
-			Type:       "smartphone", // Assume smartphone por padrão
-			Vendor:     "unknown",
-			FirstSeen:  time.Now(),
-			LastSeen:   time.Now(),
-			IsActive:   true,
+			Type: "smartphone", // Assume smartphone por padrão
+			Vendor: "unknown",
+			FirstSeen: time.Now(),
+			LastSeen: time.Now(),
+			IsActive: true,
 		}
 		if err := s.storage.SaveDevice(device); err != nil {
 			log.Printf("Erro ao criar dispositivo: %v", err)
@@ -934,11 +934,11 @@ func (s *Server) handleRegistrationSubmit(w http.ResponseWriter, r *http.Request
 
 	// Cria colaborador
 	employee := &models.Employee{
-		MACAddress:       macAddress,
-		Name:             submission.Name,
-		Department:       submission.Department,
+		MACAddress: macAddress,
+		Name: submission.Name,
+		Department: submission.Department,
 		CustomDeviceType: submission.CustomDeviceType,
-		CustomVendor:     submission.CustomVendor,
+		CustomVendor: submission.CustomVendor,
 	}
 
 	if err := s.storage.SaveEmployee(employee); err != nil {
@@ -952,14 +952,14 @@ func (s *Server) handleRegistrationSubmit(w http.ResponseWriter, r *http.Request
 		log.Printf("Erro ao marcar token como usado: %v", err)
 	}
 
-	log.Printf("✓ Colaborador cadastrado via QR Code: %s (%s) - MAC: %s",
+	log.Printf(" Colaborador cadastrado via QR Code: %s (%s) - MAC: %s",
 		submission.Name, submission.Department, macAddress)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]interface{}{
-		"success":     true,
-		"message":     "Cadastro realizado com sucesso!",
-		"name":        submission.Name,
+		"success": true,
+		"message": "Cadastro realizado com sucesso!",
+		"name": submission.Name,
 		"mac_address": macAddress,
 	}); err != nil {
 		log.Printf("Erro ao codificar resposta: %v", err)
@@ -1035,7 +1035,7 @@ func (s *Server) getMACFromIP(remoteAddr string) string {
 				if len(field) == 17 && strings.Count(field, ":") == 5 {
 					// Valida se é um MAC válido
 					if isValidMAC(field) {
-						log.Printf("✓ MAC detectado via ARP: %s", field)
+						log.Printf(" MAC detectado via ARP: %s", field)
 						return field
 					}
 				}
@@ -1043,7 +1043,7 @@ func (s *Server) getMACFromIP(remoteAddr string) string {
 		}
 	}
 
-	log.Printf("⚠️  Não foi possível detectar MAC via ARP para IP %s", ip)
+	log.Printf(" Não foi possível detectar MAC via ARP para IP %s", ip)
 
 	// Fallback: consulta dispositivos recentes (menos confiável)
 	devices, err := s.storage.GetAllDevices()

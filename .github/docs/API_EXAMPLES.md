@@ -24,12 +24,12 @@ curl http://localhost:8080/api/stats
 
 ```bash
 curl -X POST http://localhost:8080/api/associate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "mac_address": "AA:BB:CC:DD:EE:FF",
-    "employee_name": "Maria Santos",
-    "department": "RH"
-  }'
+ -H "Content-Type: application/json" \
+ -d '{
+ "mac_address": "AA:BB:CC:DD:EE:FF",
+ "employee_name": "Maria Santos",
+ "department": "RH"
+ }'
 ```
 
 ## Exemplos com jq (formatação JSON)
@@ -56,8 +56,8 @@ curl -s http://localhost:8080/api/devices | jq '. | length'
 
 ```bash
 curl -s http://localhost:8080/api/devices | \
-  jq -r '.[] | select(.is_active == true and .employee_name != null) | .employee_name' | \
-  sort -u
+ jq -r '.[] | select(.is_active == true and .employee_name != null) | .employee_name' | \
+ sort -u
 ```
 
 ## Integração com Python
@@ -72,19 +72,19 @@ response = requests.get(f"{BASE_URL}/devices")
 devices = response.json()
 
 for device in devices:
-    if device['is_active'] and not device.get('employee_name'):
-        print(f"Dispositivo não cadastrado: {device['mac_address']}")
+ if device['is_active'] and not device.get('employee_name'):
+ print(f"Dispositivo não cadastrado: {device['mac_address']}")
 
 # Cadastrar funcionário
 data = {
-    "mac_address": "AA:BB:CC:DD:EE:FF",
-    "employee_name": "Carlos Souza",
-    "department": "Vendas"
+ "mac_address": "AA:BB:CC:DD:EE:FF",
+ "employee_name": "Carlos Souza",
+ "department": "Vendas"
 }
 
 response = requests.post(f"{BASE_URL}/associate", json=data)
 if response.ok:
-    print("Funcionário cadastrado com sucesso!")
+ print("Funcionário cadastrado com sucesso!")
 
 # Ver estatísticas
 stats = requests.get(f"{BASE_URL}/stats").json()
@@ -100,26 +100,26 @@ const BASE_URL = 'http://localhost:8080/api';
 
 // Listar dispositivos ativos
 async function getActiveDevices() {
-    const response = await axios.get(`${BASE_URL}/devices`);
-    return response.data.filter(d => d.is_active);
+ const response = await axios.get(`${BASE_URL}/devices`);
+ return response.data.filter(d => d.is_active);
 }
 
 // Cadastrar funcionário
 async function registerEmployee(macAddress, name, department) {
-    const response = await axios.post(`${BASE_URL}/associate`, {
-        mac_address: macAddress,
-        employee_name: name,
-        department: department
-    });
-    return response.data;
+ const response = await axios.post(`${BASE_URL}/associate`, {
+ mac_address: macAddress,
+ employee_name: name,
+ department: department
+ });
+ return response.data;
 }
 
 // Monitorar em tempo real
 async function monitor() {
-    setInterval(async () => {
-        const stats = await axios.get(`${BASE_URL}/stats`);
-        console.log(`Presentes: ${stats.data.present_employees}/${stats.data.total_employees}`);
-    }, 5000);
+ setInterval(async () => {
+ const stats = await axios.get(`${BASE_URL}/stats`);
+ console.log(`Presentes: ${stats.data.present_employees}/${stats.data.total_employees}`);
+ }, 5000);
 }
 
 monitor();
@@ -133,15 +133,15 @@ Você pode criar um script que verifica periodicamente e envia notificações:
 #!/bin/bash
 
 while true; do
-    PRESENT=$(curl -s http://localhost:8080/api/stats | jq '.present_employees')
-    
-    if [ $PRESENT -lt 3 ]; then
-        # Enviar notificação (exemplo com Slack)
-        curl -X POST https://hooks.slack.com/services/YOUR/WEBHOOK/URL \
-          -H 'Content-Type: application/json' \
-          -d "{\"text\": \"⚠️ Apenas $PRESENT funcionários presentes!\"}"
-    fi
-    
-    sleep 300  # Verifica a cada 5 minutos
+ PRESENT=$(curl -s http://localhost:8080/api/stats | jq '.present_employees')
+
+ if [ $PRESENT -lt 3 ]; then
+ # Enviar notificação (exemplo com Slack)
+ curl -X POST https://hooks.slack.com/services/YOUR/WEBHOOK/URL \
+ -H 'Content-Type: application/json' \
+ -d "{\"text\": \" Apenas $PRESENT funcionários presentes!\"}"
+ fi
+
+ sleep 300 # Verifica a cada 5 minutos
 done
 ```

@@ -6,13 +6,13 @@ O WaveTrack agora utiliza a biblioteca [OUIja](https://github.com/lucasrafaldini
 
 ## Características da Integração
 
-### 🌐 Método Principal: OUIja
+### Método Principal: OUIja
 - **Base de dados oficial**: Utiliza a base OUI mantida pela Wireshark/IEEE
-- **Auto-atualização**: Cache inteligente com TTL configurável  
+- **Auto-atualização**: Cache inteligente com TTL configurável
 - **Performance**: Busca em memória após carregamento inicial
 - **Cobertura**: Base completa com milhares de fabricantes
 
-### 📋 Fallback Inteligente
+### Fallback Inteligente
 - **Base local**: Fallback para fabricantes mais comuns em caso de problemas de rede
 - **Cache persistente**: Evita consultas repetidas para MACs já identificados
 - **Tolerância a falhas**: Sistema continua funcionando mesmo offline
@@ -27,19 +27,19 @@ POST /api/vendor/details
 Content-Type: application/json
 
 {
-    "mac_address": "00:50:56:12:34:56"
+ "mac_address": "00:50:56:12:34:56"
 }
 ```
 
 **Resposta:**
 ```json
 {
-    "mac": "00:50:56:12:34:56",
-    "vendor": "VMware",
-    "oui": "00:50:56",
-    "device_type": "virtual_machine",
-    "is_ambiguous": false,
-    "possible_types": []
+ "mac": "00:50:56:12:34:56",
+ "vendor": "VMware",
+ "oui": "00:50:56",
+ "device_type": "virtual_machine",
+ "is_ambiguous": false,
+ "possible_types": []
 }
 ```
 
@@ -49,25 +49,25 @@ POST /api/vendor/search
 Content-Type: application/json
 
 {
-    "pattern": "apple"
+ "pattern": "apple"
 }
 ```
 
 **Resposta:**
 ```json
 {
-    "pattern": "apple",
-    "vendors": [
-        {
-            "vendor": "Apple",
-            "count": 127
-        },
-        {
-            "vendor": "Apple Computer",
-            "count": 45
-        }
-    ],
-    "count": 2
+ "pattern": "apple",
+ "vendors": [
+ {
+ "vendor": "Apple",
+ "count": 127
+ },
+ {
+ "vendor": "Apple Computer",
+ "count": 45
+ }
+ ],
+ "count": 2
 }
 ```
 
@@ -79,18 +79,18 @@ GET /api/vendor/top
 **Resposta:**
 ```json
 {
-    "top_vendors": [
-        {
-            "vendor": "Intel",
-            "count": 1247
-        },
-        {
-            "vendor": "Apple",
-            "count": 892
-        }
-    ],
-    "limit": 20,
-    "count": 20
+ "top_vendors": [
+ {
+ "vendor": "Intel",
+ "count": 1247
+ },
+ {
+ "vendor": "Apple",
+ "count": 892
+ }
+ ],
+ "limit": 20,
+ "count": 20
 }
 ```
 
@@ -102,9 +102,9 @@ GET /api/vendor/stats
 **Resposta:**
 ```json
 {
-    "total_ouis": 28945,
-    "source": "Wireshark/IEEE Official Database",
-    "last_update": "Auto-updated via OUIja"
+ "total_ouis": 28945,
+ "source": "Wireshark/IEEE Official Database",
+ "last_update": "Auto-updated via OUIja"
 }
 ```
 
@@ -129,8 +129,8 @@ fmt.Printf("Tipos possíveis: %v", info.PossibleTypes)
 // Informações detalhadas via OUIja
 details, err := deviceid.GetDetailedVendorInfo("A4:5E:60:12:34:56")
 if err == nil {
-    fmt.Printf("OUI: %s", details.OUI)
-    fmt.Printf("MAC normalizado: %s", details.MAC)
+ fmt.Printf("OUI: %s", details.OUI)
+ fmt.Printf("MAC normalizado: %s", details.MAC)
 }
 
 // Busca por fabricante
@@ -148,13 +148,13 @@ stats, err := deviceid.GetDatabaseStats()
 O sistema agora produz logs informativos mostrando a fonte da identificação:
 
 ```
-✅ Sistema de identificação inicializado com OUIja (base IEEE oficial)
-🌐 OUIja: Biblioteca de identificação de fabricantes via MAC address
-📋 Fallback: Base de dados local para casos offline
+ Sistema de identificação inicializado com OUIja (base IEEE oficial)
+ OUIja: Biblioteca de identificação de fabricantes via MAC address
+ Fallback: Base de dados local para casos offline
 
-🌐 OUIja: A4:5E:60:12:34:56 [Apple (incerto)] (base IEEE oficial)
-📋 LOCAL: 00:03:93:12:34:56 [Apple (incerto)] (base OUI IEEE backup)
-📋 FALLBACK: 28:cf:e9:12:34:56 [Apple (incerto)] (base interna)
+ OUIja: A4:5E:60:12:34:56 [Apple (incerto)] (base IEEE oficial)
+ LOCAL: 00:03:93:12:34:56 [Apple (incerto)] (base OUI IEEE backup)
+ FALLBACK: 28:cf:e9:12:34:56 [Apple (incerto)] (base interna)
 ```
 
 ## Performance e Cache
@@ -171,12 +171,12 @@ O sistema agora produz logs informativos mostrando a fonte da identificação:
 
 ## Compatibilidade
 
-### ✅ Retrocompatibilidade
+### Retrocompatibilidade
 - Todas as funções existentes continuam funcionando
 - Interface da API mantida inalterada
 - Logs e formatos de resposta preservados
 
-### ✨ Melhorias
+### Melhorias
 - Identificação mais precisa com base oficial IEEE
 - Novos endpoints para funcionalidades avançadas
 - Cache inteligente para melhor performance
@@ -204,8 +204,8 @@ go build ./cmd/wavetrack
 
 # Testar endpoints via curl
 curl -X POST http://localhost:8080/api/vendor/details \
-  -H "Content-Type: application/json" \
-  -d '{"mac_address": "A4:5E:60:12:34:56"}'
+ -H "Content-Type: application/json" \
+ -d '{"mac_address": "A4:5E:60:12:34:56"}'
 
 curl -X GET http://localhost:8080/api/vendor/top
 
@@ -214,9 +214,9 @@ curl -X GET http://localhost:8080/api/vendor/stats
 
 ## Benefícios da Integração
 
-1. **📊 Base Oficial**: Utiliza dados mantidos oficialmente pela IEEE/Wireshark
-2. **🔄 Auto-atualização**: Mantém a base sempre atualizada automaticamente
-3. **⚡ Performance**: Cache inteligente para consultas rápidas
-4. **🛡️ Robustez**: Sistema de fallback para garantir funcionamento offline
-5. **🎯 Precisão**: Identificação mais precisa com base completa de OUIs
-6. **🔧 Facilidade**: Integração transparente sem quebrar código existente
+1. ** Base Oficial**: Utiliza dados mantidos oficialmente pela IEEE/Wireshark
+2. ** Auto-atualização**: Mantém a base sempre atualizada automaticamente
+3. ** Performance**: Cache inteligente para consultas rápidas
+4. ** Robustez**: Sistema de fallback para garantir funcionamento offline
+5. ** Precisão**: Identificação mais precisa com base completa de OUIs
+6. ** Facilidade**: Integração transparente sem quebrar código existente

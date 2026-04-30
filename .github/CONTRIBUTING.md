@@ -12,24 +12,24 @@ Obrigado por contribuir! Este documento descreve como participar do projeto.
 1. Faça um fork e clone o repositório.
 2. Crie uma branch: `git checkout -b feat/minha-feature`.
 3. Instale as dependências:
-   ```bash
-   # Linux (Debian/Ubuntu)
-   sudo apt-get install libpcap-dev
-   
-   # macOS
-   brew install libpcap
-   
-   # Windows
-   # Instale Npcap: https://npcap.com/
-   ```
+ ```bash
+ # Linux (Debian/Ubuntu)
+ sudo apt-get install libpcap-dev
+
+ # macOS
+ brew install libpcap
+
+ # Windows
+ # Instale Npcap: https://npcap.com/
+ ```
 4. Compile o projeto:
-   ```bash
-   go build -o wavetrack cmd/wavetrack/main.go
-   ```
+ ```bash
+ go build -o wavetrack cmd/wavetrack/main.go
+ ```
 5. Rode os testes:
-   ```bash
-   go test ./...
-   ```
+ ```bash
+ go test ./...
+ ```
 
 ## Padrão de commits
 Use o formato do Conventional Commits:
@@ -75,16 +75,16 @@ test(api): add integration tests for devices endpoint
 
 ## Estrutura do Código
 ```
-cmd/wavetrack/          → Main application
+cmd/wavetrack/ → Main application
 internal/
-  ├── api/              → REST API handlers
-  ├── config/           → Configuration
-  ├── logger/           → Event logging
-  ├── models/           → Data structures
-  ├── storage/          → Persistence
-  ├── tracker/          → Presence logic
-  └── wifi/             → Packet capture
-web/                    → Frontend (HTML/CSS/JS)
+ ├── api/ → REST API handlers
+ ├── config/ → Configuration
+ ├── logger/ → Event logging
+ ├── models/ → Data structures
+ ├── storage/ → Persistence
+ ├── tracker/ → Presence logic
+ └── wifi/ → Packet capture
+web/ → Frontend (HTML/CSS/JS)
 ```
 
 ## Discussões e issues
@@ -132,4 +132,4 @@ web/                    → Frontend (HTML/CSS/JS)
 - Issues: Para bugs e feature requests.
 - Pull Requests: Para contribuições de código.
 
-Obrigado por ajudar a construir uma ferramenta de presença simples e eficaz! 📡💚
+Obrigado por ajudar a construir uma ferramenta de presença simples e eficaz!

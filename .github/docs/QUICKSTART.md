@@ -1,10 +1,10 @@
-# 🚀 Quick Start - WaveTrack
+# Quick Start - WaveTrack
 
 Comece a usar o WaveTrack em menos de 5 minutos!
 
-## ⚡ Início Rápido
+## Início Rápido
 
-### 1️⃣ Pré-requisitos
+### 1 Pré-requisitos
 
 Certifique-se de ter instalado:
 
@@ -19,14 +19,14 @@ sudo apt-get install libpcap-dev golang-go
 sudo dnf install libpcap-devel golang
 ```
 
-### 2️⃣ Baixar Dependências
+### 2 Baixar Dependências
 
 ```bash
 cd /Users/outis/Desktop/wavetrack
 go mod download
 ```
 
-### 3️⃣ Configurar Interface de Rede
+### 3 Configurar Interface de Rede
 
 Edite `config.yaml` e ajuste a interface de rede:
 
@@ -42,29 +42,29 @@ ip link show | grep wlan
 Atualize em `config.yaml`:
 ```yaml
 network:
-  interface: "en0"  # ← Substitua pela sua interface
+ interface: "en0" # ← Substitua pela sua interface
 ```
 
-### 4️⃣ Compilar
+### 4 Compilar
 
 ```bash
 go build -o wavetrack cmd/wavetrack/main.go
 ```
 
-### 5️⃣ Executar
+### 5 Executar
 
 ```bash
 sudo ./wavetrack
 ```
 
-### 6️⃣ Acessar Dashboard
+### 6 Acessar Dashboard
 
 Abra seu navegador em:
 ```
 http://localhost:8080
 ```
 
-## 🎯 Primeiros Passos na Interface
+## Primeiros Passos na Interface
 
 ### Passo 1: Visualize os Dispositivos
 Você verá uma lista de dispositivos detectados na sua rede Wi-Fi.
@@ -81,7 +81,7 @@ Você verá uma lista de dispositivos detectados na sua rede Wi-Fi.
 - Veja quem está presente/ausente
 - Acompanhe a força do sinal
 
-## 📱 Como Descobrir o MAC de um Dispositivo
+## Como Descobrir o MAC de um Dispositivo
 
 ### iPhone/iPad
 1. Abra **Configurações**
@@ -109,7 +109,7 @@ ipconfig /all
 ```
 Procure por "Endereço Físico" da interface Wi-Fi.
 
-## 🔧 Teste Rápido da API
+## Teste Rápido da API
 
 ### Ver Estatísticas
 ```bash
@@ -124,27 +124,27 @@ curl http://localhost:8080/api/devices
 ### Cadastrar Funcionário via API
 ```bash
 curl -X POST http://localhost:8080/api/associate \
-  -H "Content-Type: application/json" \
-  -d '{
-    "mac_address": "AA:BB:CC:DD:EE:FF",
-    "employee_name": "João Silva",
-    "department": "TI"
-  }'
+ -H "Content-Type: application/json" \
+ -d '{
+ "mac_address": "AA:BB:CC:DD:EE:FF",
+ "employee_name": "João Silva",
+ "department": "TI"
+ }'
 ```
 
-## 🎨 Interface - Tour Rápido
+## Interface - Tour Rápido
 
 ### Cards de Estatísticas (Topo)
 ```
 ┌────────────┐ ┌────────────┐ ┌────────────┐ ┌────────────┐
-│     15     │ │      8     │ │      5     │ │      3     │
-│Dispositivos│ │   Ativos   │ │Funcionários│ │ Presentes  │
+│ 15 │ │ 8 │ │ 5 │ │ 3 │
+│Dispositivos│ │ Ativos │ │Funcionários│ │ Presentes │
 └────────────┘ └────────────┘ └────────────┘ └────────────┘
 ```
 
 ### Tabela de Dispositivos
-- **🟢 Verde**: Dispositivo ativo (visto recentemente)
-- **🔴 Vermelho**: Dispositivo inativo (não visto há tempo)
+- ** Verde**: Dispositivo ativo (visto recentemente)
+- ** Vermelho**: Dispositivo inativo (não visto há tempo)
 - **Barra de Sinal**: Mostra força do Wi-Fi visualmente
 - **[Cadastrar]**: Botão para associar funcionário
 
@@ -152,7 +152,7 @@ curl -X POST http://localhost:8080/api/associate \
 - Clique para forçar atualização imediata
 - Gira ao atualizar
 
-## 🐛 Troubleshooting Rápido
+## Troubleshooting Rápido
 
 ### Erro: "Permission denied"
 **Solução**: Execute com `sudo`
@@ -164,8 +164,8 @@ sudo ./wavetrack
 **Solução**: Interface incorreta no config.yaml
 ```bash
 # Liste interfaces disponíveis
-ifconfig  # macOS
-ip link   # Linux
+ifconfig # macOS
+ip link # Linux
 ```
 
 ### Erro: "Address already in use"
@@ -194,13 +194,13 @@ sudo tcpdump -i en0 -c 10
 ### Dashboard não carrega
 **Verifique**:
 1. Servidor está rodando?
-   ```bash
-   curl http://localhost:8080/api/stats
-   ```
+ ```bash
+ curl http://localhost:8080/api/stats
+ ```
 2. Porta correta? (padrão: 8080)
 3. Firewall bloqueando?
 
-## 📊 Exemplo de Saída (Console)
+## Exemplo de Saída (Console)
 
 ```
 === WaveTrack - Sistema de Monitoramento de Presença ===
@@ -209,45 +209,45 @@ Sistema de armazenamento iniciado
 Sistema de logs iniciado: ./logs/presence_2025-10-28.log
 Scanner iniciado na interface en0
 Monitorando 0 funcionários cadastrados
-🌐 Servidor web iniciado em http://localhost:8080
-   Acesse o dashboard no navegador!
+ Servidor web iniciado em http://localhost:8080
+ Acesse o dashboard no navegador!
 Sistema iniciado! Pressione Ctrl+C para parar...
 
-✓ João Silva chegou (Departamento: TI)
-✓ Maria Santos chegou (Departamento: RH)
-✗ João Silva saiu
+ João Silva chegou (Departamento: TI)
+ Maria Santos chegou (Departamento: RH)
+ João Silva saiu
 ```
 
-## 📁 Arquivos Gerados
+## Arquivos Gerados
 
 Após executar, você terá:
 
 ```
 wavetrack/
 ├── data/
-│   └── employees.json      # Funcionários cadastrados
+│ └── employees.json # Funcionários cadastrados
 ├── logs/
-│   └── presence_*.log      # Logs de eventos por dia
-└── wavetrack              # Binário compilado
+│ └── presence_*.log # Logs de eventos por dia
+└── wavetrack # Binário compilado
 ```
 
-## ⚙️ Configurações Comuns
+## Configurações Comuns
 
 ### Ajustar Timeout de Saída
 ```yaml
 # config.yaml
 presence:
-  timeout_minutes: 5  # ← Altere aqui (em minutos)
+ timeout_minutes: 5 # ← Altere aqui (em minutos)
 ```
 
 ### Ajustar Sensibilidade do Sinal
 ```yaml
 # config.yaml
 presence:
-  signal_threshold: -75  # ← Menor = mais sensível
-                         #   -50: Muito próximo
-                         #   -70: Proximidade normal
-                         #   -90: Longe
+ signal_threshold: -75 # ← Menor = mais sensível
+ # -50: Muito próximo
+ # -70: Proximidade normal
+ # -90: Longe
 ```
 
 ### Mudar Porta do Servidor
@@ -260,16 +260,16 @@ presence:
 ./wavetrack -config config.production.yaml
 ```
 
-## 🎓 Próximos Passos
+## Próximos Passos
 
 Após configurar o básico:
 
-1. **Leia a documentação completa**: [README.md](README.md)
+1. **Leia a documentação completa**: [README.md](../../README.md)
 2. **Explore a API**: [API_EXAMPLES.md](API_EXAMPLES.md)
 3. **Faça deploy em produção**: [DEPLOY.md](DEPLOY.md)
 4. **Contribua**: [CONTRIBUTING.md](CONTRIBUTING.md)
 
-## 💡 Dicas
+## Dicas
 
 ### Performance
 - Para ambientes grandes, aumente o intervalo de scan
@@ -293,7 +293,7 @@ cp -r data/ backup_data_$(date +%Y%m%d)/
 - **Dúvidas**: Veja FAQ no README.md
 - **Features**: Sugira no GitHub Discussions
 
-## ✅ Checklist Inicial
+## Checklist Inicial
 
 - [ ] libpcap instalado
 - [ ] Go 1.21+ instalado
@@ -307,6 +307,6 @@ cp -r data/ backup_data_$(date +%Y%m%d)/
 
 ---
 
-**🎉 Pronto! Você está monitorando presença via Wi-Fi!**
+** Pronto! Você está monitorando presença via Wi-Fi!**
 
 *Para mais detalhes, veja [SUMMARY.md](SUMMARY.md)*

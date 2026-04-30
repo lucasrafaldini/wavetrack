@@ -11,15 +11,15 @@ import (
 
 // VendorInfo contém informações sobre o fabricante
 type VendorInfo struct {
-	Name          string
-	DeviceType    string
+	Name string
+	DeviceType string
 	PossibleTypes []string // Para fabricantes ambíguos
-	IsAmbiguous   bool     // Indica se o fabricante faz múltiplos tipos
+	IsAmbiguous bool // Indica se o fabricante faz múltiplos tipos
 }
 
 // Cache para armazenar consultas de API
 type VendorCache struct {
-	mu    sync.RWMutex
+	mu sync.RWMutex
 	cache map[string]VendorInfo
 }
 
@@ -29,9 +29,9 @@ var vendorCache = &VendorCache{
 
 // init inicializa o sistema de identificação com OUIja
 func init() {
-	log.Printf("✅ Sistema de identificação inicializado com OUIja (base IEEE oficial)")
-	log.Printf("🌐 OUIja: Biblioteca de identificação de fabricantes via MAC address")
-	log.Printf("📋 Fallback: Base de dados local para casos offline")
+	log.Printf(" Sistema de identificação inicializado com OUIja (base IEEE oficial)")
+	log.Printf(" OUIja: Biblioteca de identificação de fabricantes via MAC address")
+	log.Printf(" Fallback: Base de dados local para casos offline")
 }
 
 // ouiDatabase contém prefixos MAC (OUI) mais comuns - usado como fallback final
@@ -224,8 +224,8 @@ func inferDeviceType(company string) VendorInfo {
 		strings.Contains(company, "realme") ||
 		strings.Contains(company, "nokia") && strings.Contains(company, "mobile") {
 		return VendorInfo{
-			Name:        company,
-			DeviceType:  "smartphone",
+			Name: company,
+			DeviceType: "smartphone",
 			IsAmbiguous: false,
 		}
 	}
@@ -242,8 +242,8 @@ func inferDeviceType(company string) VendorInfo {
 		strings.Contains(company, "msi") ||
 		strings.Contains(company, "gigabyte") {
 		return VendorInfo{
-			Name:        company,
-			DeviceType:  "laptop",
+			Name: company,
+			DeviceType: "laptop",
 			IsAmbiguous: false,
 		}
 	}
@@ -260,8 +260,8 @@ func inferDeviceType(company string) VendorInfo {
 		strings.Contains(company, "juniper") ||
 		strings.Contains(company, "fortinet") {
 		return VendorInfo{
-			Name:        company,
-			DeviceType:  "router",
+			Name: company,
+			DeviceType: "router",
 			IsAmbiguous: false,
 		}
 	}
@@ -274,8 +274,8 @@ func inferDeviceType(company string) VendorInfo {
 		strings.Contains(company, "tuya smart") ||
 		strings.Contains(company, "sonoff") {
 		return VendorInfo{
-			Name:        company,
-			DeviceType:  "iot",
+			Name: company,
+			DeviceType: "iot",
 			IsAmbiguous: false,
 		}
 	}
@@ -286,84 +286,84 @@ func inferDeviceType(company string) VendorInfo {
 	if strings.Contains(company, "apple") {
 		if strings.Contains(company, "iphone") || strings.Contains(company, "mobile") {
 			return VendorInfo{
-				Name:        company,
-				DeviceType:  "smartphone",
+				Name: company,
+				DeviceType: "smartphone",
 				IsAmbiguous: false,
 			}
 		}
 		if strings.Contains(company, "ipad") {
 			return VendorInfo{
-				Name:        company,
-				DeviceType:  "tablet",
+				Name: company,
+				DeviceType: "tablet",
 				IsAmbiguous: false,
 			}
 		}
 		// Apple genérico - pode ser MacBook, iPhone, iPad, Apple TV, etc.
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"laptop", "smartphone", "tablet", "smarttv"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
 	// Samsung - faz de tudo: smartphones, TVs, laptops, tablets, routers
 	if strings.Contains(company, "samsung") {
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"smartphone", "tablet", "laptop", "smarttv", "router"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
 	// LG - smartphones, TVs, laptops
 	if strings.Contains(company, "lg") {
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"smartphone", "smarttv", "laptop"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
 	// Xiaomi - smartphones, laptops, IoT, tablets, TVs
 	if strings.Contains(company, "xiaomi") {
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"smartphone", "laptop", "iot", "tablet", "smarttv"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
 	// Huawei - principalmente smartphones, mas também routers e laptops
 	if strings.Contains(company, "huawei") {
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"smartphone", "tablet", "laptop", "router"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
 	// Qualcomm - principalmente smartphones, mas também IoT e routers
 	if strings.Contains(company, "qualcomm") {
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"smartphone", "iot", "router"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
 	// ASUS - laptops, routers, smartphones
 	if strings.Contains(company, "asus") {
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"laptop", "router", "smartphone"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
@@ -371,53 +371,53 @@ func inferDeviceType(company string) VendorInfo {
 	if strings.Contains(company, "sony") {
 		if strings.Contains(company, "mobile") {
 			return VendorInfo{
-				Name:        company,
-				DeviceType:  "smartphone",
+				Name: company,
+				DeviceType: "smartphone",
 				IsAmbiguous: false,
 			}
 		}
 		if strings.Contains(company, "computer") || strings.Contains(company, "playstation") {
 			return VendorInfo{
-				Name:        company,
-				DeviceType:  "console",
+				Name: company,
+				DeviceType: "console",
 				IsAmbiguous: false,
 			}
 		}
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"smartphone", "smarttv", "console", "laptop"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
 	// Motorola - principalmente smartphones, mas também routers
 	if strings.Contains(company, "motorola") {
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"smartphone", "router"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
 	// Broadcom - principalmente routers, mas também encontrado em laptops/smartphones
 	if strings.Contains(company, "broadcom") {
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"router", "laptop", "smartphone"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
 	// MediaTek - principalmente smartphones, mas também IoT e tablets
 	if strings.Contains(company, "mediatek") {
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"smartphone", "tablet", "iot"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
@@ -425,24 +425,24 @@ func inferDeviceType(company string) VendorInfo {
 	if strings.Contains(company, "microsoft") {
 		if strings.Contains(company, "surface") {
 			return VendorInfo{
-				Name:        company,
-				DeviceType:  "laptop",
+				Name: company,
+				DeviceType: "laptop",
 				IsAmbiguous: false,
 			}
 		}
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"laptop", "console", "iot"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
 	// Consoles específicos
 	if strings.Contains(company, "nintendo") {
 		return VendorInfo{
-			Name:        company,
-			DeviceType:  "console",
+			Name: company,
+			DeviceType: "console",
 			IsAmbiguous: false,
 		}
 	}
@@ -452,8 +452,8 @@ func inferDeviceType(company string) VendorInfo {
 		strings.Contains(company, "roku") ||
 		strings.Contains(company, "chromecast") {
 		return VendorInfo{
-			Name:        company,
-			DeviceType:  "smarttv",
+			Name: company,
+			DeviceType: "smarttv",
 			IsAmbiguous: false,
 		}
 	}
@@ -465,50 +465,50 @@ func inferDeviceType(company string) VendorInfo {
 		strings.Contains(company, "beijing") ||
 		strings.Contains(company, "hangzhou") {
 		return VendorInfo{
-			Name:          company,
-			DeviceType:    "incerto",
+			Name: company,
+			DeviceType: "incerto",
 			PossibleTypes: []string{"smartphone", "iot"},
-			IsAmbiguous:   true,
+			IsAmbiguous: true,
 		}
 	}
 
 	// Fallback baseado em palavras-chave
 	if strings.Contains(company, "mobile") || strings.Contains(company, "phone") {
 		return VendorInfo{
-			Name:        company,
-			DeviceType:  "smartphone",
+			Name: company,
+			DeviceType: "smartphone",
 			IsAmbiguous: false,
 		}
 	}
 
 	if strings.Contains(company, "computer") || strings.Contains(company, "laptop") {
 		return VendorInfo{
-			Name:        company,
-			DeviceType:  "laptop",
+			Name: company,
+			DeviceType: "laptop",
 			IsAmbiguous: false,
 		}
 	}
 
 	if strings.Contains(company, "network") || strings.Contains(company, "router") {
 		return VendorInfo{
-			Name:        company,
-			DeviceType:  "router",
+			Name: company,
+			DeviceType: "router",
 			IsAmbiguous: false,
 		}
 	}
 
 	if strings.Contains(company, "smart") || strings.Contains(company, "iot") {
 		return VendorInfo{
-			Name:        company,
-			DeviceType:  "iot",
+			Name: company,
+			DeviceType: "iot",
 			IsAmbiguous: false,
 		}
 	}
 
 	// Completamente desconhecido
 	return VendorInfo{
-		Name:        company,
-		DeviceType:  "unknown",
+		Name: company,
+		DeviceType: "unknown",
 		IsAmbiguous: false,
 	}
 }
@@ -517,23 +517,23 @@ func inferDeviceType(company string) VendorInfo {
 func getDeviceEmoji(deviceType string) string {
 	switch deviceType {
 	case "smartphone":
-		return "📱"
+		return ""
 	case "tablet":
-		return "📲"
+		return ""
 	case "laptop":
-		return "💻"
+		return ""
 	case "router":
-		return "🌐"
+		return ""
 	case "iot":
-		return "🔗"
+		return ""
 	case "smarttv":
-		return "📺"
+		return ""
 	case "console":
-		return "🎮"
+		return ""
 	case "incerto":
-		return "❔"
+		return ""
 	default:
-		return "❓"
+		return ""
 	}
 }
 
@@ -589,7 +589,7 @@ func IdentifyDeviceDetailed(mac string) VendorInfo {
 		vendorCache.cache[oui] = info
 		vendorCache.mu.Unlock()
 
-		log.Printf("🌐 OUIja: %s [%s] (base IEEE oficial)",
+		log.Printf(" OUIja: %s [%s] (base IEEE oficial)",
 			mac, FormatDeviceInfoWithTooltip(info))
 		return info
 	}
@@ -600,7 +600,7 @@ func IdentifyDeviceDetailed(mac string) VendorInfo {
 		vendorCache.cache[oui] = info
 		vendorCache.mu.Unlock()
 
-		log.Printf("📋 LOCAL: %s [%s] (base OUI IEEE backup)",
+		log.Printf(" LOCAL: %s [%s] (base OUI IEEE backup)",
 			mac, FormatDeviceInfoWithTooltip(info))
 		return info
 	}
@@ -615,7 +615,7 @@ func IdentifyDeviceDetailed(mac string) VendorInfo {
 		vendorCache.cache[oui] = detailedInfo
 		vendorCache.mu.Unlock()
 
-		log.Printf("📋 FALLBACK: %s [%s] (base interna)",
+		log.Printf(" FALLBACK: %s [%s] (base interna)",
 			mac, FormatDeviceInfoWithTooltip(detailedInfo))
 		return detailedInfo
 	}
@@ -649,11 +649,11 @@ func GetDetailedVendorInfo(mac string) (*VendorDetailedInfo, error) {
 	}
 
 	detailedInfo := &VendorDetailedInfo{
-		MAC:           result.MAC,
-		Vendor:        result.Vendor,
-		OUI:           oui,
-		DeviceType:    deviceInfo.DeviceType,
-		IsAmbiguous:   deviceInfo.IsAmbiguous,
+		MAC: result.MAC,
+		Vendor: result.Vendor,
+		OUI: oui,
+		DeviceType: deviceInfo.DeviceType,
+		IsAmbiguous: deviceInfo.IsAmbiguous,
 		PossibleTypes: deviceInfo.PossibleTypes,
 	}
 
@@ -677,7 +677,7 @@ func SearchVendorsByPattern(pattern string) ([]*VendorStats, error) {
 	for i, vendor := range vendors {
 		stats[i] = &VendorStats{
 			Vendor: vendor.Vendor,
-			Count:  vendor.Count,
+			Count: vendor.Count,
 		}
 	}
 
@@ -692,7 +692,7 @@ func GetTopVendors(limit int) []*VendorStats {
 	for i, vendor := range vendors {
 		stats[i] = &VendorStats{
 			Vendor: vendor.Vendor,
-			Count:  vendor.Count,
+			Count: vendor.Count,
 		}
 	}
 
@@ -707,31 +707,31 @@ func GetDatabaseStats() (*DatabaseStats, error) {
 	}
 
 	return &DatabaseStats{
-		TotalOUIs:  size,
-		Source:     "Wireshark/IEEE Official Database",
+		TotalOUIs: size,
+		Source: "Wireshark/IEEE Official Database",
 		LastUpdate: "Auto-updated via OUIja",
 	}, nil
 }
 
 // VendorDetailedInfo contém informações detalhadas sobre um vendor
 type VendorDetailedInfo struct {
-	MAC           string   `json:"mac"`
-	Vendor        string   `json:"vendor"`
-	OUI           string   `json:"oui"`
-	DeviceType    string   `json:"device_type"`
-	IsAmbiguous   bool     `json:"is_ambiguous"`
+	MAC string `json:"mac"`
+	Vendor string `json:"vendor"`
+	OUI string `json:"oui"`
+	DeviceType string `json:"device_type"`
+	IsAmbiguous bool `json:"is_ambiguous"`
 	PossibleTypes []string `json:"possible_types"`
 }
 
 // VendorStats contém estatísticas sobre um fabricante
 type VendorStats struct {
 	Vendor string `json:"vendor"`
-	Count  int    `json:"count"`
+	Count int `json:"count"`
 }
 
 // DatabaseStats contém estatísticas da base de dados
 type DatabaseStats struct {
-	TotalOUIs  int    `json:"total_ouis"`
-	Source     string `json:"source"`
+	TotalOUIs int `json:"total_ouis"`
+	Source string `json:"source"`
 	LastUpdate string `json:"last_update"`
 }

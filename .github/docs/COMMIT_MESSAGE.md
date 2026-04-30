@@ -1,32 +1,32 @@
 # WaveTrack v1.0 - Sistema Completo de Monitoramento de Presença
 
-## 🎉 Release Inicial - Production Ready
+## Release Inicial - Production Ready
 
 Sistema completo de monitoramento de presença baseado em detecção Wi-Fi, com interface web moderna, histórico de 7 dias, CRUD de colaboradores e preservação inteligente de dados.
 
 ---
 
-## ✨ Principais Funcionalidades
+## Principais Funcionalidades
 
-### 📊 Interface Web com 3 Abas
+### Interface Web com 3 Abas
 - **Tempo Real**: Monitoramento de dispositivos ativos no momento
 - **Histórico (7 dias)**: Análise de presença com percentuais (8h = 100%)
 - **Colaboradores**: Gerenciamento completo (criar, editar, deletar)
 
-### 👥 Gestão de Colaboradores
+### Gestão de Colaboradores
 - CRUD completo via interface web
 - Edição de MAC com migração automática de histórico
 - Edição de nome atualiza todos os eventos passados
 - Exclusão preserva 100% do histórico para relatórios
 
-### 📈 Histórico e Análises
+### Histórico e Análises
 - Últimos 7 dias de presença por colaborador
 - Horários de chegada e saída
 - Total de horas trabalhadas
 - Percentual de presença (sem cap - pode exceder 100%)
 - Média semanal calculada automaticamente
 
-### 🔧 Backend Robusto
+### Backend Robusto
 - SQLite para persistência permanente
 - API REST com 6 endpoints
 - Preservação inteligente de histórico
@@ -35,7 +35,7 @@ Sistema completo de monitoramento de presença baseado em detecção Wi-Fi, com 
 
 ---
 
-## 📦 Arquivos Adicionados
+## Arquivos Adicionados
 
 ### Backend (Go)
 - `cmd/wavetrack/main.go` - Aplicação principal
@@ -75,7 +75,7 @@ Sistema completo de monitoramento de presença baseado em detecção Wi-Fi, com 
 
 ---
 
-## 🔧 Mudanças Técnicas
+## Mudanças Técnicas
 
 ### Arquitetura
 - Migração de JSON para SQLite
@@ -106,7 +106,7 @@ Sistema completo de monitoramento de presença baseado em detecção Wi-Fi, com 
 
 ---
 
-## 🐛 Correções
+## Correções
 
 - Percentual de presença agora usa 8 horas como base (não 9h)
 - Removido cap de 100% para mostrar horas extras
@@ -116,7 +116,7 @@ Sistema completo de monitoramento de presença baseado em detecção Wi-Fi, com 
 
 ---
 
-## 🗑️ Arquivos Removidos
+## Arquivos Removidos
 
 - `data/employees.json` - Substituído por SQLite
 - `web/index_old.html` - Backup desnecessário
@@ -127,7 +127,7 @@ Sistema completo de monitoramento de presença baseado em detecção Wi-Fi, com 
 
 ---
 
-## 📊 Estatísticas
+## Estatísticas
 
 - **Linhas de Código**: ~3.500 (Go + JS + CSS + HTML)
 - **Arquivos**: 25+ arquivos de código
@@ -138,23 +138,23 @@ Sistema completo de monitoramento de presença baseado em detecção Wi-Fi, com 
 
 ---
 
-## 🚀 Status
+## Status
 
-✅ Production Ready  
-✅ Documentação Completa  
-✅ Testes Validados  
-✅ Schema Migrado  
-✅ Dados Preservados  
+ Production Ready
+ Documentação Completa
+ Testes Validados
+ Schema Migrado
+ Dados Preservados
 
 ---
 
-**Versão**: 1.0.0  
-**Data**: 28 de Outubro de 2025  
+**Versão**: 1.0.0
+**Data**: 28 de Outubro de 2025
 **Autor**: Lucas Rafaldini (@lucasrafaldini)
 
 ---
 
-## 🔜 Próximos Passos (v1.1)
+## Próximos Passos (v1.1)
 
 - Relatórios em PDF/CSV
 - Gráficos analíticos
