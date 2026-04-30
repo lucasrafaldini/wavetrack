@@ -71,9 +71,9 @@ func (s *Storage) GetFirstArrivalToday(macAddress string) (*time.Time, error) {
 		SELECT MIN(timestamp)
 		FROM events
 		WHERE mac_address = ?
-		  AND event_type = 'arrival'
-		  AND timestamp >= datetime(date('now','localtime'))
-		  AND timestamp <  datetime(date('now','localtime'), '+1 day')
+		 AND event_type = 'arrival'
+		 AND timestamp >= datetime(date('now','localtime'))
+		 AND timestamp < datetime(date('now','localtime'), '+1 day')
 	`
 
 	var ts sql.NullString
@@ -110,8 +110,8 @@ func (s *Storage) GetOnlineDurationToday(macAddress string, now time.Time) (time
 		SELECT event_type, timestamp
 		FROM events
 		WHERE mac_address = ?
-		  AND timestamp >= datetime(date('now','localtime'))
-		  AND timestamp <  datetime(date('now','localtime'), '+1 day')
+		 AND timestamp >= datetime(date('now','localtime'))
+		 AND timestamp < datetime(date('now','localtime'), '+1 day')
 		ORDER BY timestamp ASC
 	`
 
@@ -119,7 +119,7 @@ func (s *Storage) GetOnlineDurationToday(macAddress string, now time.Time) (time
 	if err != nil {
 		return 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var (
 		total    time.Duration
@@ -260,7 +260,7 @@ func (s *Storage) GetAllDevices() ([]models.Device, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var devices []models.Device
 	for rows.Next() {
@@ -341,9 +341,9 @@ func (s *Storage) SaveEmployee(employee *models.Employee) error {
 // GetEmployeeByMAC busca um funcionário pelo MAC address
 func (s *Storage) GetEmployeeByMAC(macAddress string) (*models.Employee, error) {
 	query := `
-		SELECT id, mac_address, name, department, 
-		       COALESCE(custom_device_type, ''), COALESCE(custom_vendor, ''),
-		       created_at, updated_at
+		SELECT id, mac_address, name, department,
+		 COALESCE(custom_device_type, ''), COALESCE(custom_vendor, ''),
+		 created_at, updated_at
 		FROM employees
 		WHERE mac_address = ?
 	`
@@ -373,9 +373,9 @@ func (s *Storage) GetEmployeeByMAC(macAddress string) (*models.Employee, error) 
 // GetAllEmployees retorna todos os funcionários
 func (s *Storage) GetAllEmployees() ([]models.Employee, error) {
 	query := `
-		SELECT id, mac_address, name, department, 
-		       COALESCE(custom_device_type, ''), COALESCE(custom_vendor, ''),
-		       created_at, updated_at
+		SELECT id, mac_address, name, department,
+		 COALESCE(custom_device_type, ''), COALESCE(custom_vendor, ''),
+		 created_at, updated_at
 		FROM employees
 		ORDER BY name
 	`
@@ -384,7 +384,7 @@ func (s *Storage) GetAllEmployees() ([]models.Employee, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var employees []models.Employee
 	for rows.Next() {
@@ -505,7 +505,7 @@ func (s *Storage) GetEvents(startDate, endDate time.Time, eventType string) ([]m
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var events []models.PresenceEvent
 	for rows.Next() {
@@ -542,7 +542,7 @@ func (s *Storage) GetRecentEvents(limit int) ([]models.PresenceEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var events []models.PresenceEvent
 	for rows.Next() {
@@ -599,9 +599,9 @@ func (s *Storage) GetStats() (map[string]interface{}, error) {
 	// Funcionários presentes (employees com dispositivos ativos)
 	var presentEmployees int
 	err = s.db.QueryRow(`
-		SELECT COUNT(DISTINCT e.id) 
-		FROM employees e 
-		INNER JOIN devices d ON e.mac_address = d.mac_address 
+		SELECT COUNT(DISTINCT e.id)
+		FROM employees e
+		INNER JOIN devices d ON e.mac_address = d.mac_address
 		WHERE d.is_active = 1
 	`).Scan(&presentEmployees)
 	if err != nil {
@@ -625,7 +625,7 @@ func (s *Storage) GetStats() (map[string]interface{}, error) {
 func (s *Storage) GetDeviceDetails(macAddress string) (map[string]interface{}, error) {
 	query := `
 		SELECT mac_address, vendor, type, first_seen, last_seen, signal_strength, is_active,
-		       employee_name, employee_department
+		 employee_name, employee_department
 		FROM device_details
 		WHERE mac_address = ?
 	`
@@ -676,9 +676,9 @@ func (s *Storage) GetLastDepartureToday(macAddress string) (*time.Time, error) {
 		SELECT MAX(timestamp)
 		FROM events
 		WHERE mac_address = ?
-		  AND event_type = 'departure'
-		  AND timestamp >= datetime(date('now','localtime'))
-		  AND timestamp <  datetime(date('now','localtime'), '+1 day')
+		 AND event_type = 'departure'
+		 AND timestamp >= datetime(date('now','localtime'))
+		 AND timestamp < datetime(date('now','localtime'), '+1 day')
 	`
 
 	var ts sql.NullString
@@ -752,7 +752,7 @@ func (s *Storage) GetHistory7Days() ([]HistoryDayData, error) {
 			var deviceType, vendor sql.NullString
 
 			if err := rows.Scan(&empData.MACAddress, &empData.Name, &deviceType, &vendor); err != nil {
-				rows.Close()
+				_ = rows.Close()
 				return nil, err
 			}
 
@@ -777,7 +777,7 @@ func (s *Storage) GetHistory7Days() ([]HistoryDayData, error) {
 
 			employees = append(employees, empData)
 		}
-		rows.Close()
+		_ = rows.Close()
 
 		dayData := HistoryDayData{
 			Date:           date,
@@ -798,9 +798,9 @@ func (s *Storage) getFirstArrivalForDate(macAddress string, startOfDay, endOfDay
 		SELECT MIN(timestamp)
 		FROM events
 		WHERE mac_address = ?
-		  AND event_type = 'arrival'
-		  AND timestamp >= ?
-		  AND timestamp < ?
+		 AND event_type = 'arrival'
+		 AND timestamp >= ?
+		 AND timestamp < ?
 	`
 
 	var ts sql.NullString
@@ -831,9 +831,9 @@ func (s *Storage) getLastDepartureForDate(macAddress string, startOfDay, endOfDa
 		SELECT MAX(timestamp)
 		FROM events
 		WHERE mac_address = ?
-		  AND event_type = 'departure'
-		  AND timestamp >= ?
-		  AND timestamp < ?
+		 AND event_type = 'departure'
+		 AND timestamp >= ?
+		 AND timestamp < ?
 	`
 
 	var ts sql.NullString
@@ -865,8 +865,8 @@ func (s *Storage) getOnlineDurationForDate(macAddress string, startOfDay, endOfD
 		SELECT event_type, timestamp
 		FROM events
 		WHERE mac_address = ?
-		  AND timestamp >= ?
-		  AND timestamp < ?
+		 AND timestamp >= ?
+		 AND timestamp < ?
 		ORDER BY timestamp ASC
 	`
 
@@ -874,7 +874,7 @@ func (s *Storage) getOnlineDurationForDate(macAddress string, startOfDay, endOfD
 	if err != nil {
 		return 0, err
 	}
-	defer rows.Close()
+	defer func() { _ = rows.Close() }()
 
 	var totalDuration time.Duration
 	var lastArrival *time.Time
@@ -967,7 +967,7 @@ func (s *Storage) GetRegistrationToken(token string) (*models.RegistrationToken,
 // MarkTokenAsUsed marca um token como usado
 func (s *Storage) MarkTokenAsUsed(token string) error {
 	query := `
-		UPDATE registration_tokens 
+		UPDATE registration_tokens
 		SET used = 1, used_at = CURRENT_TIMESTAMP
 		WHERE token = ?
 	`
@@ -988,14 +988,14 @@ func (s *Storage) CleanExpiredTokens() error {
 func (s *Storage) CleanupUnregisteredDevices(daysOld int) (int, error) {
 	// PASSO 1: Atualiza o campo is_active no banco baseado no timeout (20 minutos padrão)
 	updateQuery := `
-		UPDATE devices 
-		SET is_active = 0 
+		UPDATE devices
+		SET is_active = 0
 		WHERE datetime(last_seen) < datetime('now', '-20 minutes')
 	`
 	if _, err := s.db.Exec(updateQuery); err != nil {
-		log.Printf("⚠️  Erro ao atualizar status: %v", err)
+		log.Printf(" Erro ao atualizar status: %v", err)
 	} else {
-		log.Printf("🔄 Status de dispositivos atualizado baseado em last_seen")
+		log.Printf(" Status de dispositivos atualizado baseado em last_seen")
 	}
 
 	// PASSO 2: Remove dispositivos que:
@@ -1009,33 +1009,33 @@ func (s *Storage) CleanupUnregisteredDevices(daysOld int) (int, error) {
 	// Debug: verifica quantos dispositivos inativos sem cadastro existem
 	var countBefore int
 	debugQuery := `
-		SELECT COUNT(*) FROM devices 
+		SELECT COUNT(*) FROM devices
 		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
-		  AND is_active = 0
+		 AND is_active = 0
 	`
 	if err := s.db.QueryRow(debugQuery).Scan(&countBefore); err != nil {
-		log.Printf("⚠️  Erro ao contar dispositivos: %v", err)
+		log.Printf(" Erro ao contar dispositivos: %v", err)
 	}
-	log.Printf("🔍 DEBUG: Dispositivos inativos sem cadastro antes da limpeza: %d", countBefore)
+	log.Printf(" DEBUG: Dispositivos inativos sem cadastro antes da limpeza: %d", countBefore)
 
 	if daysOld == 0 {
 		// Remove TODOS os dispositivos inativos sem cadastro, independente do tempo
 		query = `
-		DELETE FROM devices 
+		DELETE FROM devices
 		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
-		  AND is_active = 0
+		 AND is_active = 0
 		`
-		log.Printf("🧹 Executando limpeza: removendo TODOS os inativos sem cadastro")
+		log.Printf(" Executando limpeza: removendo TODOS os inativos sem cadastro")
 		result, err = s.db.Exec(query)
 	} else {
 		// Remove dispositivos inativos há mais de X dias
 		query = `
-		DELETE FROM devices 
+		DELETE FROM devices
 		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
-		  AND is_active = 0
-		  AND last_seen < datetime('now', '-' || ? || ' days')
+		 AND is_active = 0
+		 AND last_seen < datetime('now', '-' || ? || ' days')
 		`
-		log.Printf("🧹 Executando limpeza: removendo inativos há mais de %d dias", daysOld)
+		log.Printf(" Executando limpeza: removendo inativos há mais de %d dias", daysOld)
 		result, err = s.db.Exec(query, daysOld)
 	}
 
@@ -1048,7 +1048,7 @@ func (s *Storage) CleanupUnregisteredDevices(daysOld int) (int, error) {
 		return 0, fmt.Errorf("erro ao obter dispositivos removidos: %v", err)
 	}
 
-	log.Printf("✅ Dispositivos removidos: %d", int(affected))
+	log.Printf(" Dispositivos removidos: %d", int(affected))
 	return int(affected), nil
 }
 
@@ -1057,10 +1057,10 @@ func (s *Storage) CleanupOldEvents(daysToKeep int) (int, error) {
 	// Remove apenas eventos de unknown_device antigos
 	// Mantém eventos de funcionários cadastrados
 	query := `
-	DELETE FROM events 
+	DELETE FROM events
 	WHERE event_type = 'unknown_device'
-	  AND timestamp < datetime('now', '-' || ? || ' days')
-	  AND mac_address NOT IN (SELECT mac_address FROM employees)
+	 AND timestamp < datetime('now', '-' || ? || ' days')
+	 AND mac_address NOT IN (SELECT mac_address FROM employees)
 	`
 
 	result, err := s.db.Exec(query, daysToKeep)
@@ -1080,17 +1080,17 @@ func (s *Storage) CleanupOldEvents(daysToKeep int) (int, error) {
 func (s *Storage) GetUnregisteredDevicesCount() (total, inactive int, err error) {
 	// Primeiro, atualiza o campo is_active baseado no timeout
 	updateQuery := `
-		UPDATE devices 
-		SET is_active = 0 
+		UPDATE devices
+		SET is_active = 0
 		WHERE datetime(last_seen) < datetime('now', '-20 minutes')
 	`
 	if _, execErr := s.db.Exec(updateQuery); execErr != nil {
-		log.Printf("⚠️  Erro ao atualizar status: %v", execErr)
+		log.Printf(" Erro ao atualizar status: %v", execErr)
 	}
 
 	// Total de dispositivos não cadastrados
 	err = s.db.QueryRow(`
-		SELECT COUNT(*) FROM devices 
+		SELECT COUNT(*) FROM devices
 		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
 	`).Scan(&total)
 	if err != nil {
@@ -1099,9 +1099,9 @@ func (s *Storage) GetUnregisteredDevicesCount() (total, inactive int, err error)
 
 	// Dispositivos não cadastrados inativos (baseado no campo is_active do banco)
 	err = s.db.QueryRow(`
-		SELECT COUNT(*) FROM devices 
+		SELECT COUNT(*) FROM devices
 		WHERE mac_address NOT IN (SELECT mac_address FROM employees)
-		  AND is_active = 0
+		 AND is_active = 0
 	`).Scan(&inactive)
 	if err != nil {
 		return 0, 0, fmt.Errorf("erro ao contar dispositivos inativos: %v", err)

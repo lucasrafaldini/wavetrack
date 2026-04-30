@@ -1,0 +1,141 @@
+name: ci
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install libpcap
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+
+      - name: go vet
+        run: go vet ./...
+
+      - name: gofmt
+        run: |
+          UNFORMATTED=$(gofmt -l .)
+          if [ -n "$UNFORMATTED" ]; then
+            echo "Files not formatted with gofmt:"
+            echo "$UNFORMATTED"
+            exit 1
+          fi
+
+      - name: go mod tidy check
+        run: |
+          go mod tidy
+          git diff --exit-code go.mod go.sum
+
+      - name: golangci-lint
+        uses: golangci/golangci-lint-action@v6
+        with:
+          version: latest
+          args: --timeout=5m
+          install-mode: goinstall
+
+  test:
+    name: Test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install libpcap
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+
+      - name: Run tests with coverage
+        run: go test -race -coverprofile=coverage.out -covermode=atomic ./...
+
+      - name: Print coverage summary
+        run: go tool cover -func=coverage.out
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage
+          path: coverage.out
+          retention-days: 14
+
+  benchmark:
+    name: Benchmark
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install libpcap
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+
+      - name: Run benchmarks
+        run: go test -bench=. -benchmem -count=3 -timeout=120s ./... | tee benchmark.txt
+
+      - name: Upload benchmark artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: benchmark
+          path: benchmark.txt
+          retention-days: 14
+
+  build:
+    name: Build
+    runs-on: ${{ matrix.os }}
+    needs: [lint, test]
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            os: ubuntu-latest
+          - goos: darwin
+            goarch: arm64
+            os: macos-latest
+          - goos: darwin
+            goarch: amd64
+            os: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+
+      - name: Install libpcap (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+
+      - name: Build
+        env:
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 1
+        run: |
+          go build -ldflags="-s -w" -o wavetrack-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/wavetrack
+
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: wavetrack-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: wavetrack-${{ matrix.goos }}-${{ matrix.goarch }}
+          retention-days: 14

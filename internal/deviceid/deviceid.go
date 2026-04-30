@@ -17,7 +17,7 @@ type VendorInfo struct {
 	IsAmbiguous   bool     // Indica se o fabricante faz múltiplos tipos
 }
 
-// Cache para armazenar consultas de API
+// VendorCache armazena consultas em memória para evitar lookups repetidos
 type VendorCache struct {
 	mu    sync.RWMutex
 	cache map[string]VendorInfo
@@ -27,187 +27,19 @@ var vendorCache = &VendorCache{
 	cache: make(map[string]VendorInfo),
 }
 
-// init inicializa o sistema de identificação com OUIja
 func init() {
-	log.Printf("✅ Sistema de identificação inicializado com OUIja (base IEEE oficial)")
-	log.Printf("🌐 OUIja: Biblioteca de identificação de fabricantes via MAC address")
-	log.Printf("📋 Fallback: Base de dados local para casos offline")
-}
-
-// ouiDatabase contém prefixos MAC (OUI) mais comuns - usado como fallback final
-// NOTA: Agora usando OUIja como método principal - esta base serve apenas como fallback
-// quando a biblioteca OUIja não conseguir identificar o dispositivo (casos offline)
-var ouiDatabase = map[string]VendorInfo{
-	// Apple - dispositivos principais
-	"00:03:93": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
-	"28:cf:e9": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
-	"a4:5e:60": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
-	"ac:de:48": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
-	"f0:18:98": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
-	"dc:a6:32": {Name: "Apple", DeviceType: "incerto", PossibleTypes: []string{"laptop", "smartphone", "tablet"}, IsAmbiguous: true},
-
-	// Samsung - múltiplos dispositivos
-	"2c:44:01": {Name: "Samsung", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "laptop", "smarttv", "router"}, IsAmbiguous: true},
-	"38:2d:d1": {Name: "Samsung", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "laptop", "smarttv", "router"}, IsAmbiguous: true},
-	"78:d6:f0": {Name: "Samsung", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "laptop", "smarttv", "router"}, IsAmbiguous: true},
-	"dc:ef:09": {Name: "Samsung", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "laptop", "smarttv", "router"}, IsAmbiguous: true},
-
-	// Intel - principalmente laptops
-	"a4:83:e7": {Name: "Intel", DeviceType: "laptop", IsAmbiguous: false},
-	"cc:2f:71": {Name: "Intel", DeviceType: "laptop", IsAmbiguous: false},
-	"80:86:f2": {Name: "Intel", DeviceType: "laptop", IsAmbiguous: false},
-
-	// Qualcomm - principalmente smartphones
-	"00:03:7f": {Name: "Qualcomm", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "iot", "router"}, IsAmbiguous: true},
-	"00:0a:f5": {Name: "Qualcomm", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "iot", "router"}, IsAmbiguous: true},
-
-	// Xiaomi - múltiplos dispositivos
-	"34:ce:00": {Name: "Xiaomi", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "laptop", "iot", "tablet"}, IsAmbiguous: true},
-	"50:8f:4c": {Name: "Xiaomi", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "laptop", "iot", "tablet"}, IsAmbiguous: true},
-
-	// Huawei
-	"00:e0:fc": {Name: "Huawei", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "laptop", "router"}, IsAmbiguous: true},
-	"ac:5a:fc": {Name: "Huawei", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "laptop", "router"}, IsAmbiguous: true},
-
-	// Broadcom - principalmente equipamentos de rede
-	"84:0b:bb": {Name: "Broadcom", DeviceType: "incerto", PossibleTypes: []string{"router", "laptop", "smartphone"}, IsAmbiguous: true},
-	"b8:27:eb": {Name: "Broadcom", DeviceType: "iot", IsAmbiguous: false}, // Raspberry Pi
-
-	// TP-Link - equipamentos de rede
-	"50:c7:bf": {Name: "TP-Link", DeviceType: "router", IsAmbiguous: false},
-	"ec:08:6b": {Name: "TP-Link", DeviceType: "router", IsAmbiguous: false},
-
-	// Motorola
-	"cc:fb:65": {Name: "Motorola", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "router"}, IsAmbiguous: true},
-
-	// LG
-	"10:68:3f": {Name: "LG Electronics", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "smarttv", "laptop"}, IsAmbiguous: true},
-
-	// ASUS
-	"2c:56:dc": {Name: "ASUS", DeviceType: "incerto", PossibleTypes: []string{"laptop", "router", "smartphone"}, IsAmbiguous: true},
-	"ac:9e:17": {Name: "ASUS", DeviceType: "incerto", PossibleTypes: []string{"laptop", "router", "smartphone"}, IsAmbiguous: true},
-
-	// Espressif (ESP32/ESP8266) - IoT
-	"30:ae:a4": {Name: "Espressif", DeviceType: "iot", IsAmbiguous: false},
-	"24:6f:28": {Name: "Espressif", DeviceType: "iot", IsAmbiguous: false},
-
-	// Shenzhen (fabricantes chineses)
-	"d8:c6:78": {Name: "Shenzhen", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "iot"}, IsAmbiguous: true},
-
-	// Sony
-	"08:00:46": {Name: "Sony", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "smarttv", "console", "laptop"}, IsAmbiguous: true},
-	"54:84:1b": {Name: "Sony", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "smarttv", "console", "laptop"}, IsAmbiguous: true},
-
-	// Microsoft
-	"00:50:f2": {Name: "Microsoft", DeviceType: "incerto", PossibleTypes: []string{"laptop", "console", "iot"}, IsAmbiguous: true},
-	"7c:ed:8d": {Name: "Microsoft", DeviceType: "incerto", PossibleTypes: []string{"laptop", "console", "iot"}, IsAmbiguous: true},
-
-	// Nintendo
-	"00:17:ab": {Name: "Nintendo", DeviceType: "console", IsAmbiguous: false},
-	"a4:c0:e1": {Name: "Nintendo", DeviceType: "console", IsAmbiguous: false},
-
-	// Dell
-	"00:14:22": {Name: "Dell", DeviceType: "laptop", IsAmbiguous: false},
-	"b8:ca:3a": {Name: "Dell", DeviceType: "laptop", IsAmbiguous: false},
-
-	// HP/Hewlett-Packard
-	"00:1b:78": {Name: "Hewlett Packard", DeviceType: "laptop", IsAmbiguous: false},
-	"2c:27:d7": {Name: "Hewlett Packard", DeviceType: "laptop", IsAmbiguous: false},
-
-	// Lenovo
-	"00:1a:4b": {Name: "Lenovo", DeviceType: "laptop", IsAmbiguous: false},
-	"54:ee:75": {Name: "Lenovo", DeviceType: "laptop", IsAmbiguous: false},
-
-	// Cisco
-	"00:0c:41": {Name: "Cisco", DeviceType: "router", IsAmbiguous: false},
-	"00:23:ab": {Name: "Cisco", DeviceType: "router", IsAmbiguous: false},
-
-	// Netgear
-	"00:09:5b": {Name: "Netgear", DeviceType: "router", IsAmbiguous: false},
-	"a0:40:a0": {Name: "Netgear", DeviceType: "router", IsAmbiguous: false},
-
-	// D-Link
-	"00:05:5d": {Name: "D-Link", DeviceType: "router", IsAmbiguous: false},
-	"cc:b2:55": {Name: "D-Link", DeviceType: "router", IsAmbiguous: false},
-
-	// Linksys
-	"00:06:25": {Name: "Linksys", DeviceType: "router", IsAmbiguous: false},
-	"48:f8:b3": {Name: "Linksys", DeviceType: "router", IsAmbiguous: false},
-
-	// Amazon (Fire TV, Echo, etc.)
-	"00:fc:8b": {Name: "Amazon", DeviceType: "smarttv", IsAmbiguous: false},
-	"38:f7:3d": {Name: "Amazon", DeviceType: "iot", IsAmbiguous: false},
-
-	// Google (Chromecast, Nest, etc.)
-	"00:1a:11": {Name: "Google", DeviceType: "smarttv", IsAmbiguous: false},
-	"64:16:66": {Name: "Google", DeviceType: "iot", IsAmbiguous: false},
-
-	// Roku
-	"dc:3a:5e": {Name: "Roku", DeviceType: "smarttv", IsAmbiguous: false},
-	"b0:a7:37": {Name: "Roku", DeviceType: "smarttv", IsAmbiguous: false},
-
-	// OnePlus
-	"ac:37:43": {Name: "OnePlus", DeviceType: "smartphone", IsAmbiguous: false},
-	"e8:b2:ac": {Name: "OnePlus", DeviceType: "smartphone", IsAmbiguous: false},
-
-	// Oppo
-	"20:6b:e7": {Name: "Oppo", DeviceType: "smartphone", IsAmbiguous: false},
-	"94:e9:79": {Name: "Oppo", DeviceType: "smartphone", IsAmbiguous: false},
-
-	// Vivo
-	"8c:be:be": {Name: "Vivo", DeviceType: "smartphone", IsAmbiguous: false},
-	"f8:e6:1a": {Name: "Vivo", DeviceType: "smartphone", IsAmbiguous: false},
-
-	// Realme
-	"02:69:6a": {Name: "Realme", DeviceType: "smartphone", IsAmbiguous: false},
-
-	// Acer
-	"00:02:e3": {Name: "Acer", DeviceType: "laptop", IsAmbiguous: false},
-	"00:21:85": {Name: "Acer", DeviceType: "laptop", IsAmbiguous: false},
-
-	// Toshiba
-	"00:00:ba": {Name: "Toshiba", DeviceType: "laptop", IsAmbiguous: false},
-	"00:80:d0": {Name: "Toshiba", DeviceType: "laptop", IsAmbiguous: false},
-
-	// Marvell (chipsets)
-	"00:50:43": {Name: "Marvell", DeviceType: "incerto", PossibleTypes: []string{"router", "laptop", "iot"}, IsAmbiguous: true},
-
-	// Ralink/MediaTek
-	"00:0c:43": {Name: "Ralink", DeviceType: "incerto", PossibleTypes: []string{"smartphone", "tablet", "iot"}, IsAmbiguous: true},
-}
-
-// lookupVendorLocal consulta apenas nossa base OUI local expandida
-// TODO v2.0: Refatorar para usar biblioteca própria de consulta MAC address
-// Sistema futuro incluirá cache, atualizações automáticas e múltiplas fontes
-func lookupVendorLocal(mac string) (VendorInfo, error) {
-	// Extrai os primeiros 3 octetos do MAC (OUI)
-	parts := strings.Split(strings.ToLower(mac), ":")
-	if len(parts) < 3 {
-		return VendorInfo{}, fmt.Errorf("MAC inválido")
-	}
-
-	oui := strings.Join(parts[:3], ":")
-
-	// Verifica na nossa base expandida
-	if info, exists := ouiDatabase[oui]; exists {
-		return info, nil
-	}
-
-	return VendorInfo{}, fmt.Errorf("vendor não encontrado na base local")
+	log.Println("Sistema de identificação inicializado com OUIja (base IEEE oficial)")
 }
 
 // lookupVendorOUIja consulta vendor usando a biblioteca OUIja
-// Esta é a nova implementação que substitui a base de dados hardcoded
 func lookupVendorOUIja(mac string) (VendorInfo, error) {
-	// Utiliza a biblioteca OUIja para buscar o fabricante
 	vendor, err := ouija.GetVendor(mac)
 	if err != nil {
 		return VendorInfo{}, fmt.Errorf("vendor não encontrado via OUIja: %v", err)
 	}
 
-	// Aplica a lógica de inferência de tipo de dispositivo
 	deviceInfo := inferDeviceType(vendor)
-	deviceInfo.Name = vendor // Garante que o nome do fabricante seja mantido
+	deviceInfo.Name = vendor
 
 	return deviceInfo, nil
 }
@@ -513,53 +345,21 @@ func inferDeviceType(company string) VendorInfo {
 	}
 }
 
-// getDeviceEmoji retorna o emoji apropriado para o tipo de dispositivo
-func getDeviceEmoji(deviceType string) string {
-	switch deviceType {
-	case "smartphone":
-		return "📱"
-	case "tablet":
-		return "📲"
-	case "laptop":
-		return "💻"
-	case "router":
-		return "🌐"
-	case "iot":
-		return "🔗"
-	case "smarttv":
-		return "📺"
-	case "console":
-		return "🎮"
-	case "incerto":
-		return "❔"
-	default:
-		return "❓"
-	}
-}
-
-// FormatDeviceInfo retorna uma string formatada com emoji para o dispositivo
+// FormatDeviceInfo retorna uma string formatada para o dispositivo
 func FormatDeviceInfo(vendor, deviceType string) string {
-	emoji := getDeviceEmoji(deviceType)
-	return fmt.Sprintf("%s %s - %s", emoji, vendor, deviceType)
+	return fmt.Sprintf("%s - %s", vendor, deviceType)
 }
 
 // FormatDeviceInfoWithTooltip retorna informação formatada incluindo tipos possíveis
 func FormatDeviceInfoWithTooltip(info VendorInfo) string {
-	emoji := getDeviceEmoji(info.DeviceType)
-
 	if info.IsAmbiguous && len(info.PossibleTypes) > 0 {
-		possibleEmojis := make([]string, len(info.PossibleTypes))
-		for i, deviceType := range info.PossibleTypes {
-			possibleEmojis[i] = fmt.Sprintf("%s %s", getDeviceEmoji(deviceType), deviceType)
-		}
-		tooltip := strings.Join(possibleEmojis, ", ")
-		return fmt.Sprintf("%s %s - %s (pode ser: %s)", emoji, info.Name, info.DeviceType, tooltip)
+		tooltip := strings.Join(info.PossibleTypes, ", ")
+		return fmt.Sprintf("%s - %s (pode ser: %s)", info.Name, info.DeviceType, tooltip)
 	}
-
-	return fmt.Sprintf("%s %s - %s", emoji, info.Name, info.DeviceType)
+	return fmt.Sprintf("%s - %s", info.Name, info.DeviceType)
 }
 
-// IdentifyDevice identifica o tipo e fabricante usando OSINT + cache + fallback
+// IdentifyDevice identifica o tipo e fabricante usando OUIja + cache
 func IdentifyDevice(mac string) (vendor string, deviceType string) {
 	info := IdentifyDeviceDetailed(mac)
 	return info.Name, info.DeviceType
@@ -575,7 +375,7 @@ func IdentifyDeviceDetailed(mac string) VendorInfo {
 
 	oui := strings.Join(parts[:3], ":")
 
-	// 1. Verifica cache primeiro (performance)
+	// 1. Verifica cache (performance)
 	vendorCache.mu.RLock()
 	if info, exists := vendorCache.cache[oui]; exists {
 		vendorCache.mu.RUnlock()
@@ -583,44 +383,17 @@ func IdentifyDeviceDetailed(mac string) VendorInfo {
 	}
 	vendorCache.mu.RUnlock()
 
-	// 2. Tenta biblioteca OUIja (método principal)
+	// 2. Consulta OUIja (base IEEE oficial via Wireshark)
 	if info, err := lookupVendorOUIja(mac); err == nil {
 		vendorCache.mu.Lock()
 		vendorCache.cache[oui] = info
 		vendorCache.mu.Unlock()
 
-		log.Printf("🌐 OUIja: %s [%s] (base IEEE oficial)",
-			mac, FormatDeviceInfoWithTooltip(info))
+		log.Printf("OUIja: %s [%s]", mac, FormatDeviceInfoWithTooltip(info))
 		return info
 	}
 
-	// 3. Fallback: Tenta biblioteca OUI local
-	if info, err := lookupVendorLocal(mac); err == nil {
-		vendorCache.mu.Lock()
-		vendorCache.cache[oui] = info
-		vendorCache.mu.Unlock()
-
-		log.Printf("📋 LOCAL: %s [%s] (base OUI IEEE backup)",
-			mac, FormatDeviceInfoWithTooltip(info))
-		return info
-	}
-
-	// 4. Fallback para base local (OUIs mais comuns)
-	if baseInfo, ok := ouiDatabase[oui]; ok {
-		// Aplica a nova lógica de inferência à base local também
-		detailedInfo := inferDeviceType(baseInfo.Name)
-		detailedInfo.Name = baseInfo.Name // Mantém o nome da base local
-
-		vendorCache.mu.Lock()
-		vendorCache.cache[oui] = detailedInfo
-		vendorCache.mu.Unlock()
-
-		log.Printf("📋 FALLBACK: %s [%s] (base interna)",
-			mac, FormatDeviceInfoWithTooltip(detailedInfo))
-		return detailedInfo
-	}
-
-	// 4. Não encontrado - cacheia como desconhecido para evitar consultas repetidas
+	// 3. Desconhecido - cacheia para evitar consultas repetidas
 	unknown := VendorInfo{Name: "Unknown", DeviceType: "unknown", IsAmbiguous: false}
 	vendorCache.mu.Lock()
 	vendorCache.cache[oui] = unknown
@@ -632,16 +405,13 @@ func IdentifyDeviceDetailed(mac string) VendorInfo {
 // GetDetailedVendorInfo retorna informações detalhadas usando OUIja
 // Inclui informações adicionais como MAC normalizado
 func GetDetailedVendorInfo(mac string) (*VendorDetailedInfo, error) {
-	// Busca informações detalhadas via OUIja
 	result, err := ouija.LookupVendor(mac)
 	if err != nil {
 		return nil, fmt.Errorf("erro ao buscar informações detalhadas: %v", err)
 	}
 
-	// Aplica a lógica de inferência de tipo
 	deviceInfo := inferDeviceType(result.Vendor)
 
-	// Extrai OUI do MAC address
 	parts := strings.Split(strings.ToLower(result.MAC), ":")
 	oui := ""
 	if len(parts) >= 3 {

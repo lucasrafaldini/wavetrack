@@ -2,7 +2,7 @@
 
 Este guia explica como fazer o deploy do WaveTrack em diferentes ambientes.
 
-## 🚀 Deploy em Servidor Linux
+## Deploy em Servidor Linux
 
 ### 1. Preparação do Servidor
 
@@ -91,7 +91,7 @@ sudo systemctl status wavetrack
 sudo journalctl -u wavetrack -f
 ```
 
-## 🐳 Deploy com Docker
+## Deploy com Docker
 
 ### 1. Criar Dockerfile
 
@@ -129,18 +129,18 @@ CMD ["./wavetrack", "-port", "8080"]
 version: '3.8'
 
 services:
-  wavetrack:
-    build: .
-    container_name: wavetrack
-    network_mode: host
-    privileged: true  # Necessário para captura de pacotes
-    volumes:
-      - ./config.yaml:/app/config.yaml
-      - ./logs:/app/logs
-      - ./data:/app/data
-    environment:
-      - TZ=America/Sao_Paulo
-    restart: unless-stopped
+ wavetrack:
+ build: .
+ container_name: wavetrack
+ network_mode: host
+ privileged: true # Necessário para captura de pacotes
+ volumes:
+ - ./config.yaml:/app/config.yaml
+ - ./logs:/app/logs
+ - ./data:/app/data
+ environment:
+ - TZ=America/Sao_Paulo
+ restart: unless-stopped
 ```
 
 ### 3. Executar
@@ -159,7 +159,7 @@ docker-compose logs -f
 docker-compose down
 ```
 
-## 🌐 Configurar Reverse Proxy (Nginx)
+## Configurar Reverse Proxy (Nginx)
 
 ### 1. Instalar Nginx
 
@@ -173,20 +173,20 @@ Crie `/etc/nginx/sites-available/wavetrack`:
 
 ```nginx
 server {
-    listen 80;
-    server_name wavetrack.seudominio.com;
+ listen 80;
+ server_name wavetrack.seudominio.com;
 
-    location / {
-        proxy_pass http://localhost:8080;
-        proxy_http_version 1.1;
-        proxy_set_header Upgrade $http_upgrade;
-        proxy_set_header Connection 'upgrade';
-        proxy_set_header Host $host;
-        proxy_cache_bypass $http_upgrade;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
+ location / {
+ proxy_pass http://localhost:8080;
+ proxy_http_version 1.1;
+ proxy_set_header Upgrade $http_upgrade;
+ proxy_set_header Connection 'upgrade';
+ proxy_set_header Host $host;
+ proxy_cache_bypass $http_upgrade;
+ proxy_set_header X-Real-IP $remote_addr;
+ proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+ proxy_set_header X-Forwarded-Proto $scheme;
+ }
 }
 ```
 
@@ -205,7 +205,7 @@ sudo apt install certbot python3-certbot-nginx
 sudo certbot --nginx -d wavetrack.seudominio.com
 ```
 
-## 🔒 Adicionar Autenticação Básica
+## Adicionar Autenticação Básica
 
 ### Opção 1: Nginx Basic Auth
 
@@ -218,13 +218,13 @@ sudo htpasswd -c /etc/nginx/.htpasswd admin
 
 # Adicionar ao nginx config
 # location / {
-#     auth_basic "WaveTrack";
-#     auth_basic_user_file /etc/nginx/.htpasswd;
-#     ...
+# auth_basic "WaveTrack";
+# auth_basic_user_file /etc/nginx/.htpasswd;
+# ...
 # }
 ```
 
-## 📊 Monitoramento
+## Monitoramento
 
 ### 1. Verificar Saúde do Serviço
 
@@ -248,17 +248,17 @@ Crie `/etc/logrotate.d/wavetrack`:
 
 ```
 /opt/wavetrack/logs/*.log {
-    daily
-    missingok
-    rotate 30
-    compress
-    delaycompress
-    notifempty
-    create 0640 root root
+ daily
+ missingok
+ rotate 30
+ compress
+ delaycompress
+ notifempty
+ create 0640 root root
 }
 ```
 
-## 🔧 Troubleshooting
+## Troubleshooting
 
 ### Erro: "Permission denied" ao capturar pacotes
 
@@ -292,7 +292,7 @@ sudo lsof -i :8080
 ./wavetrack -port 8081
 ```
 
-## 📱 Acesso Remoto Seguro
+## Acesso Remoto Seguro
 
 ### Túnel SSH
 
@@ -307,7 +307,7 @@ ssh -L 8080:localhost:8080 usuario@servidor
 
 Configure uma VPN para acesso seguro à rede interna onde o WaveTrack está rodando.
 
-## 🔄 Atualização
+## Atualização
 
 ```bash
 # Parar serviço
@@ -324,7 +324,7 @@ sudo go build -o wavetrack cmd/wavetrack/main.go
 sudo systemctl start wavetrack
 ```
 
-## 📈 Performance
+## Performance
 
 Para ambientes com muitos dispositivos:
 
@@ -334,16 +334,16 @@ Para ambientes com muitos dispositivos:
 4. **Considerar Redis** para cache de dispositivos
 5. **Usar banco de dados** para histórico longo
 
-## 🛡️ Segurança
+## Segurança
 
-- ✅ Execute com usuário não-privilegiado quando possível
-- ✅ Use HTTPS (SSL/TLS) em produção
-- ✅ Configure firewall para permitir apenas portas necessárias
-- ✅ Faça backup regular dos dados
-- ✅ Mantenha o sistema atualizado
-- ✅ Implemente autenticação na interface web
-- ✅ Monitore logs de acesso
+- Execute com usuário não-privilegiado quando possível
+- Use HTTPS (SSL/TLS) em produção
+- Configure firewall para permitir apenas portas necessárias
+- Faça backup regular dos dados
+- Mantenha o sistema atualizado
+- Implemente autenticação na interface web
+- Monitore logs de acesso
 
-## 📞 Suporte
+## Suporte
 
 Para problemas ou dúvidas, abra uma issue no GitHub ou entre em contato com o time de desenvolvimento.

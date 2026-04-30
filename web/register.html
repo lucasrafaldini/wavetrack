@@ -1,361 +1,361 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Cadastro - WaveTrack</title>
-    <style>
-        * {
-            margin: 0;
-            padding: 0;
-            box-sizing: border-box;
-        }
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+ <title>Cadastro - WaveTrack</title>
+ <style>
+ * {
+ margin: 0;
+ padding: 0;
+ box-sizing: border-box;
+ }
 
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-            display: flex;
-            flex-direction: column;
-            padding: 20px;
-        }
+ body {
+ font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+ min-height: 100vh;
+ display: flex;
+ flex-direction: column;
+ padding: 20px;
+ }
 
-        .container {
-            background: white;
-            border-radius: 20px;
-            padding: 30px 20px;
-            max-width: 500px;
-            width: 100%;
-            margin: auto;
-            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
-        }
+ .container {
+ background: white;
+ border-radius: 20px;
+ padding: 30px 20px;
+ max-width: 500px;
+ width: 100%;
+ margin: auto;
+ box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+ }
 
-        .header {
-            text-align: center;
-            margin-bottom: 30px;
-        }
+ .header {
+ text-align: center;
+ margin-bottom: 30px;
+ }
 
-        .logo {
-            font-size: 48px;
-            margin-bottom: 10px;
-        }
+ .logo {
+ font-size: 48px;
+ margin-bottom: 10px;
+ }
 
-        h1 {
-            color: #333;
-            font-size: 24px;
-            margin-bottom: 5px;
-        }
+ h1 {
+ color: #333;
+ font-size: 24px;
+ margin-bottom: 5px;
+ }
 
-        .subtitle {
-            color: #666;
-            font-size: 14px;
-        }
+ .subtitle {
+ color: #666;
+ font-size: 14px;
+ }
 
-        .form-group {
-            margin-bottom: 20px;
-        }
+ .form-group {
+ margin-bottom: 20px;
+ }
 
-        label {
-            display: block;
-            color: #333;
-            font-weight: 600;
-            margin-bottom: 8px;
-            font-size: 14px;
-        }
+ label {
+ display: block;
+ color: #333;
+ font-weight: 600;
+ margin-bottom: 8px;
+ font-size: 14px;
+ }
 
-        label .required {
-            color: #e74c3c;
-        }
+ label .required {
+ color: #e74c3c;
+ }
 
-        input, select {
-            width: 100%;
-            padding: 15px;
-            border: 2px solid #e0e0e0;
-            border-radius: 12px;
-            font-size: 16px;
-            transition: all 0.3s;
-            -webkit-appearance: none;
-            appearance: none;
-        }
+ input, select {
+ width: 100%;
+ padding: 15px;
+ border: 2px solid #e0e0e0;
+ border-radius: 12px;
+ font-size: 16px;
+ transition: all 0.3s;
+ -webkit-appearance: none;
+ appearance: none;
+ }
 
-        input:focus, select:focus {
-            outline: none;
-            border-color: #667eea;
-            box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
-        }
+ input:focus, select:focus {
+ outline: none;
+ border-color: #667eea;
+ box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+ }
 
-        select {
-            background: white;
-            cursor: pointer;
-            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
-            background-repeat: no-repeat;
-            background-position: right 15px center;
-            padding-right: 40px;
-        }
+ select {
+ background: white;
+ cursor: pointer;
+ background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23333' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+ background-repeat: no-repeat;
+ background-position: right 15px center;
+ padding-right: 40px;
+ }
 
-        .btn {
-            width: 100%;
-            padding: 18px;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-size: 18px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.3s;
-            margin-top: 10px;
-        }
+ .btn {
+ width: 100%;
+ padding: 18px;
+ background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+ color: white;
+ border: none;
+ border-radius: 12px;
+ font-size: 18px;
+ font-weight: 600;
+ cursor: pointer;
+ transition: all 0.3s;
+ margin-top: 10px;
+ }
 
-        .btn:active {
-            transform: scale(0.98);
-        }
+ .btn:active {
+ transform: scale(0.98);
+ }
 
-        .btn:disabled {
-            opacity: 0.6;
-            cursor: not-allowed;
-        }
+ .btn:disabled {
+ opacity: 0.6;
+ cursor: not-allowed;
+ }
 
-        .info-box {
-            background: #f8f9fa;
-            border-left: 4px solid #667eea;
-            padding: 15px;
-            border-radius: 8px;
-            margin-top: 20px;
-        }
+ .info-box {
+ background: #f8f9fa;
+ border-left: 4px solid #667eea;
+ padding: 15px;
+ border-radius: 8px;
+ margin-top: 20px;
+ }
 
-        .info-box p {
-            color: #666;
-            font-size: 13px;
-            line-height: 1.5;
-        }
+ .info-box p {
+ color: #666;
+ font-size: 13px;
+ line-height: 1.5;
+ }
 
-        .error {
-            background: #fee;
-            border-left-color: #e74c3c;
-            color: #c0392b;
-            padding: 15px;
-            border-radius: 8px;
-            margin-bottom: 20px;
-            display: none;
-        }
+ .error {
+ background: #fee;
+ border-left-color: #e74c3c;
+ color: #c0392b;
+ padding: 15px;
+ border-radius: 8px;
+ margin-bottom: 20px;
+ display: none;
+ }
 
-        .success {
-            text-align: center;
-            display: none;
-        }
+ .success {
+ text-align: center;
+ display: none;
+ }
 
-        .success-icon {
-            font-size: 64px;
-            margin-bottom: 20px;
-        }
+ .success-icon {
+ font-size: 64px;
+ margin-bottom: 20px;
+ }
 
-        .success h2 {
-            color: #27ae60;
-            margin-bottom: 10px;
-        }
+ .success h2 {
+ color: #27ae60;
+ margin-bottom: 10px;
+ }
 
-        .success p {
-            color: #666;
-            line-height: 1.6;
-        }
+ .success p {
+ color: #666;
+ line-height: 1.6;
+ }
 
-        .loading {
-            display: none;
-            text-align: center;
-            padding: 20px;
-        }
+ .loading {
+ display: none;
+ text-align: center;
+ padding: 20px;
+ }
 
-        .spinner {
-            border: 4px solid #f3f3f3;
-            border-top: 4px solid #667eea;
-            border-radius: 50%;
-            width: 40px;
-            height: 40px;
-            animation: spin 1s linear infinite;
-            margin: 0 auto 15px;
-        }
+ .spinner {
+ border: 4px solid #f3f3f3;
+ border-top: 4px solid #667eea;
+ border-radius: 50%;
+ width: 40px;
+ height: 40px;
+ animation: spin 1s linear infinite;
+ margin: 0 auto 15px;
+ }
 
-        @keyframes spin {
-            0% { transform: rotate(0deg); }
-            100% { transform: rotate(360deg); }
-        }
+ @keyframes spin {
+ 0% { transform: rotate(0deg); }
+ 100% { transform: rotate(360deg); }
+ }
 
-        @media (max-width: 480px) {
-            .container {
-                padding: 25px 15px;
-            }
-            
-            h1 {
-                font-size: 20px;
-            }
-        }
-    </style>
+ @media (max-width: 480px) {
+ .container {
+ padding: 25px 15px;
+ }
+
+ h1 {
+ font-size: 20px;
+ }
+ }
+ </style>
 </head>
 <body>
-    <div class="container">
-        <div class="header">
-            <div class="logo">📡</div>
-            <h1>WaveTrack</h1>
-            <p class="subtitle">Cadastro de Colaborador</p>
-        </div>
+ <div class="container">
+ <div class="header">
+ <div class="logo"></div>
+ <h1>WaveTrack</h1>
+ <p class="subtitle">Cadastro de Colaborador</p>
+ </div>
 
-        <div id="error" class="error"></div>
-        
-        <div id="loadingDiv" class="loading">
-            <div class="spinner"></div>
-            <p>Processando...</p>
-        </div>
+ <div id="error" class="error"></div>
 
-        <form id="registrationForm" style="display: block;">
-            <div class="form-group">
-                <label>👤 Nome Completo <span class="required">*</span></label>
-                <input type="text" id="name" name="name" required placeholder="Ex: João Silva" autocomplete="name">
-            </div>
+ <div id="loadingDiv" class="loading">
+ <div class="spinner"></div>
+ <p>Processando...</p>
+ </div>
 
-            <div class="form-group">
-                <label>🏢 Departamento <span class="required">*</span></label>
-                <input type="text" id="department" name="department" required placeholder="Ex: TI, RH, Vendas..." autocomplete="organization">
-            </div>
+ <form id="registrationForm" style="display: block;">
+ <div class="form-group">
+ <label> Nome Completo <span class="required">*</span></label>
+ <input type="text" id="name" name="name" required placeholder="Ex: João Silva" autocomplete="name">
+ </div>
 
-            <div class="form-group">
-                <label>📱 Tipo de Dispositivo</label>
-                <select id="deviceType" name="deviceType">
-                    <option value="">Selecionar...</option>
-                    <option value="iPhone">iPhone</option>
-                    <option value="Android">Android</option>
-                    <option value="Laptop">Laptop</option>
-                    <option value="Tablet">Tablet</option>
-                    <option value="Outro">Outro</option>
-                </select>
-            </div>
+ <div class="form-group">
+ <label> Departamento <span class="required">*</span></label>
+ <input type="text" id="department" name="department" required placeholder="Ex: TI, RH, Vendas..." autocomplete="organization">
+ </div>
 
-            <div class="form-group">
-                <label>🔧 Fabricante</label>
-                <select id="vendor" name="vendor">
-                    <option value="">Selecionar...</option>
-                    <option value="Apple">Apple</option>
-                    <option value="Samsung">Samsung</option>
-                    <option value="Xiaomi">Xiaomi</option>
-                    <option value="Motorola">Motorola</option>
-                    <option value="Dell">Dell</option>
-                    <option value="Lenovo">Lenovo</option>
-                    <option value="HP">HP</option>
-                    <option value="Outro">Outro</option>
-                </select>
-            </div>
+ <div class="form-group">
+ <label> Tipo de Dispositivo</label>
+ <select id="deviceType" name="deviceType">
+ <option value="">Selecionar...</option>
+ <option value="iPhone">iPhone</option>
+ <option value="Android">Android</option>
+ <option value="Laptop">Laptop</option>
+ <option value="Tablet">Tablet</option>
+ <option value="Outro">Outro</option>
+ </select>
+ </div>
 
-            <button type="submit" class="btn">✓ Concluir Cadastro</button>
+ <div class="form-group">
+ <label> Fabricante</label>
+ <select id="vendor" name="vendor">
+ <option value="">Selecionar...</option>
+ <option value="Apple">Apple</option>
+ <option value="Samsung">Samsung</option>
+ <option value="Xiaomi">Xiaomi</option>
+ <option value="Motorola">Motorola</option>
+ <option value="Dell">Dell</option>
+ <option value="Lenovo">Lenovo</option>
+ <option value="HP">HP</option>
+ <option value="Outro">Outro</option>
+ </select>
+ </div>
 
-            <div class="info-box">
-                <p>ℹ️ Seu dispositivo será detectado automaticamente. Certifique-se de estar conectado à rede Wi-Fi.</p>
-            </div>
-        </form>
+ <button type="submit" class="btn"> Concluir Cadastro</button>
 
-        <div id="successDiv" class="success">
-            <div class="success-icon">✓</div>
-            <h2>Cadastro Realizado!</h2>
-            <p id="successMessage">Bem-vindo(a)! Seu cadastro foi concluído com sucesso.</p>
-            <p style="margin-top: 20px; color: #999; font-size: 12px;">Você já pode fechar esta página.</p>
-        </div>
-    </div>
+ <div class="info-box">
+ <p> Seu dispositivo será detectado automaticamente. Certifique-se de estar conectado à rede Wi-Fi.</p>
+ </div>
+ </form>
 
-    <script>
-        // Extrai token da URL
-        const token = window.location.pathname.split('/').pop();
-        
-        // Valida token ao carregar
-        async function validateToken() {
-            try {
-                const response = await fetch(`/api/register/validate/${token}`);
-                
-                if (!response.ok) {
-                    const error = await response.text();
-                    showError(error || 'Token inválido ou expirado.');
-                    document.getElementById('registrationForm').style.display = 'none';
-                    return false;
-                }
-                
-                return true;
-            } catch (error) {
-                showError('Erro ao validar token. Verifique sua conexão.');
-                document.getElementById('registrationForm').style.display = 'none';
-                return false;
-            }
-        }
-        
-        // Submit do formulário
-        document.getElementById('registrationForm').addEventListener('submit', async (e) => {
-            e.preventDefault();
-            
-            const name = document.getElementById('name').value.trim();
-            const department = document.getElementById('department').value.trim();
-            const deviceType = document.getElementById('deviceType').value;
-            const vendor = document.getElementById('vendor').value;
-            
-            if (!name) {
-                showError('Por favor, informe seu nome completo.');
-                return;
-            }
-            
-            if (!department) {
-                showError('Por favor, informe seu departamento.');
-                return;
-            }
-            
-            // Mostra loading
-            document.getElementById('registrationForm').style.display = 'none';
-            document.getElementById('loadingDiv').style.display = 'block';
-            hideError();
-            
-            try {
-                const response = await fetch('/api/register/submit', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        token: token,
-                        name: name,
-                        department: department,
-                        custom_device_type: deviceType,
-                        custom_vendor: vendor
-                    })
-                });
-                
-                const data = await response.json();
-                
-                if (response.ok) {
-                    // Sucesso!
-                    document.getElementById('loadingDiv').style.display = 'none';
-                    document.getElementById('successDiv').style.display = 'block';
-                    document.getElementById('successMessage').textContent = 
-                        `Bem-vindo(a), ${name}! Seu cadastro foi concluído com sucesso.`;
-                } else {
-                    // Erro do servidor
-                    showError(data.message || 'Erro ao processar cadastro. Tente novamente.');
-                    document.getElementById('loadingDiv').style.display = 'none';
-                    document.getElementById('registrationForm').style.display = 'block';
-                }
-            } catch (error) {
-                showError('Erro de conexão. Verifique se está conectado à rede Wi-Fi.');
-                document.getElementById('loadingDiv').style.display = 'none';
-                document.getElementById('registrationForm').style.display = 'block';
-            }
-        });
-        
-        function showError(message) {
-            const errorDiv = document.getElementById('error');
-            errorDiv.textContent = message;
-            errorDiv.style.display = 'block';
-        }
-        
-        function hideError() {
-            document.getElementById('error').style.display = 'none';
-        }
-        
-        // Valida token ao carregar a página
-        validateToken();
-    </script>
+ <div id="successDiv" class="success">
+ <div class="success-icon"></div>
+ <h2>Cadastro Realizado!</h2>
+ <p id="successMessage">Bem-vindo(a)! Seu cadastro foi concluído com sucesso.</p>
+ <p style="margin-top: 20px; color: #999; font-size: 12px;">Você já pode fechar esta página.</p>
+ </div>
+ </div>
+
+ <script>
+ // Extrai token da URL
+ const token = window.location.pathname.split('/').pop();
+
+ // Valida token ao carregar
+ async function validateToken() {
+ try {
+ const response = await fetch(`/api/register/validate/${token}`);
+
+ if (!response.ok) {
+ const error = await response.text();
+ showError(error || 'Token inválido ou expirado.');
+ document.getElementById('registrationForm').style.display = 'none';
+ return false;
+ }
+
+ return true;
+ } catch (error) {
+ showError('Erro ao validar token. Verifique sua conexão.');
+ document.getElementById('registrationForm').style.display = 'none';
+ return false;
+ }
+ }
+
+ // Submit do formulário
+ document.getElementById('registrationForm').addEventListener('submit', async (e) => {
+ e.preventDefault();
+
+ const name = document.getElementById('name').value.trim();
+ const department = document.getElementById('department').value.trim();
+ const deviceType = document.getElementById('deviceType').value;
+ const vendor = document.getElementById('vendor').value;
+
+ if (!name) {
+ showError('Por favor, informe seu nome completo.');
+ return;
+ }
+
+ if (!department) {
+ showError('Por favor, informe seu departamento.');
+ return;
+ }
+
+ // Mostra loading
+ document.getElementById('registrationForm').style.display = 'none';
+ document.getElementById('loadingDiv').style.display = 'block';
+ hideError();
+
+ try {
+ const response = await fetch('/api/register/submit', {
+ method: 'POST',
+ headers: {
+ 'Content-Type': 'application/json'
+ },
+ body: JSON.stringify({
+ token: token,
+ name: name,
+ department: department,
+ custom_device_type: deviceType,
+ custom_vendor: vendor
+ })
+ });
+
+ const data = await response.json();
+
+ if (response.ok) {
+ // Sucesso!
+ document.getElementById('loadingDiv').style.display = 'none';
+ document.getElementById('successDiv').style.display = 'block';
+ document.getElementById('successMessage').textContent =
+ `Bem-vindo(a), ${name}! Seu cadastro foi concluído com sucesso.`;
+ } else {
+ // Erro do servidor
+ showError(data.message || 'Erro ao processar cadastro. Tente novamente.');
+ document.getElementById('loadingDiv').style.display = 'none';
+ document.getElementById('registrationForm').style.display = 'block';
+ }
+ } catch (error) {
+ showError('Erro de conexão. Verifique se está conectado à rede Wi-Fi.');
+ document.getElementById('loadingDiv').style.display = 'none';
+ document.getElementById('registrationForm').style.display = 'block';
+ }
+ });
+
+ function showError(message) {
+ const errorDiv = document.getElementById('error');
+ errorDiv.textContent = message;
+ errorDiv.style.display = 'block';
+ }
+
+ function hideError() {
+ document.getElementById('error').style.display = 'none';
+ }
+
+ // Valida token ao carregar a página
+ validateToken();
+ </script>
 </body>
 </html>

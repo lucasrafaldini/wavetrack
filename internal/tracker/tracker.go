@@ -93,7 +93,7 @@ func (t *PresenceTracker) handleDevice(device *models.Device) {
 				MACAddress:     device.MACAddress,
 				SignalStrength: device.SignalStrength,
 			}
-			t.logger.LogEvent(event)
+			_ = t.logger.LogEvent(event)
 
 			// Salva evento no banco
 			if err := t.storage.SaveEvent(event); err != nil {
@@ -101,7 +101,7 @@ func (t *PresenceTracker) handleDevice(device *models.Device) {
 			}
 
 			t.presenceMap[device.MACAddress] = true
-			log.Printf("✓ %s chegou (Departamento: %s)", employee.Name, employee.Department)
+			log.Printf(" %s chegou (Departamento: %s)", employee.Name, employee.Department)
 		}
 
 		// Atualiza último visto
@@ -114,7 +114,7 @@ func (t *PresenceTracker) handleDevice(device *models.Device) {
 			MACAddress:     device.MACAddress,
 			SignalStrength: device.SignalStrength,
 		}
-		t.logger.LogEvent(event)
+		_ = t.logger.LogEvent(event)
 
 		// Salva evento no banco
 		if err := t.storage.SaveEvent(event); err != nil {
@@ -162,7 +162,7 @@ func (t *PresenceTracker) checkTimeouts() {
 					MACAddress:     mac,
 					SignalStrength: 0,
 				}
-				t.logger.LogEvent(event)
+				_ = t.logger.LogEvent(event)
 
 				// Salva evento no banco
 				if err := t.storage.SaveEvent(event); err != nil {
@@ -175,7 +175,7 @@ func (t *PresenceTracker) checkTimeouts() {
 				}
 
 				t.presenceMap[mac] = false
-				log.Printf("✗ %s saiu", employee.Name)
+				log.Printf(" %s saiu", employee.Name)
 			}
 		}
 	}

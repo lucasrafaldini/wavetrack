@@ -86,6 +86,12 @@ func (s *Server) SetupRoutes() http.Handler {
 	mux.HandleFunc("/api/history/7days", s.handleHistory7Days)
 	mux.HandleFunc("/api/cleanup/inactive", s.handleCleanupInactive)
 
+	// OUIja vendor lookup endpoints
+	mux.HandleFunc("/api/vendor/details", s.GetDeviceVendorDetails)
+	mux.HandleFunc("/api/vendor/search", s.SearchVendorsByPattern)
+	mux.HandleFunc("/api/vendor/top", s.GetTopVendors)
+	mux.HandleFunc("/api/vendor/stats", s.GetDatabaseStats)
+
 	// Registration via QR Code
 	mux.HandleFunc("/api/register/token", s.handleGenerateQRCode)
 	mux.HandleFunc("/api/register/validate/", s.handleValidateToken)
@@ -243,7 +249,7 @@ func (s *Server) handleAssociate(w http.ResponseWriter, r *http.Request) {
 			log.Printf("Aviso ao deletar MAC antigo: %v", err)
 		}
 
-		log.Printf("✓ Histórico atualizado com sucesso")
+		log.Printf(" Histórico atualizado com sucesso")
 	}
 
 	// Se o nome mudou, atualiza em todos os eventos históricos
@@ -265,7 +271,7 @@ func (s *Server) handleAssociate(w http.ResponseWriter, r *http.Request) {
 
 	// Se o dispositivo não existe, cria um registro básico
 	if device == nil {
-		log.Printf("⚠️  Dispositivo %s não encontrado, criando registro básico", req.MACAddress)
+		log.Printf(" Dispositivo %s não encontrado, criando registro básico", req.MACAddress)
 		newDevice := &models.Device{
 			MACAddress: req.MACAddress,
 			Type:       "unknown",
@@ -296,7 +302,7 @@ func (s *Server) handleAssociate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("✓ Funcionário cadastrado: %s (%s) - %s", req.Name, req.Department, req.MACAddress)
+	log.Printf(" Funcionário cadastrado: %s (%s) - %s", req.Name, req.Department, req.MACAddress)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
@@ -334,7 +340,7 @@ func (s *Server) handleEmployeeDelete(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Printf("✓ Funcionário deletado: %s (%s) - Histórico preservado para relatórios", employee.Name, macAddress)
+	log.Printf(" Funcionário deletado: %s (%s) - Histórico preservado para relatórios", employee.Name, macAddress)
 
 	w.Header().Set("Content-Type", "application/json")
 	if err := json.NewEncoder(w).Encode(map[string]string{
@@ -662,7 +668,7 @@ func (s *Server) GetDatabaseStats(w http.ResponseWriter, r *http.Request) {
 func (s *Server) enableCORS(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 		if r.Method == "OPTIONS" {
@@ -681,12 +687,12 @@ func (s *Server) handleCleanupInactive(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	log.Println("🧹 Limpeza manual iniciada via API...")
+	log.Println(" Limpeza manual iniciada via API...")
 
 	// 1. Conta dispositivos não cadastrados antes da limpeza
 	totalBefore, inactiveBefore, err := s.storage.GetUnregisteredDevicesCount()
 	if err != nil {
-		log.Printf("❌ Erro ao contar dispositivos: %v", err)
+		log.Printf(" Erro ao contar dispositivos: %v", err)
 		http.Error(w, "Erro ao contar dispositivos", http.StatusInternalServerError)
 		return
 	}
@@ -694,7 +700,7 @@ func (s *Server) handleCleanupInactive(w http.ResponseWriter, r *http.Request) {
 	// 2. Remove dispositivos não cadastrados inativos IMEDIATAMENTE (sem espera)
 	removedDevices, err := s.storage.CleanupUnregisteredDevices(0)
 	if err != nil {
-		log.Printf("❌ Erro na limpeza de dispositivos: %v", err)
+		log.Printf(" Erro na limpeza de dispositivos: %v", err)
 		http.Error(w, "Erro na limpeza de dispositivos", http.StatusInternalServerError)
 		return
 	}
@@ -702,7 +708,7 @@ func (s *Server) handleCleanupInactive(w http.ResponseWriter, r *http.Request) {
 	// 3. Remove eventos antigos (mantém últimos 30 dias)
 	removedEvents, err := s.storage.CleanupOldEvents(30)
 	if err != nil {
-		log.Printf("❌ Erro na limpeza de eventos: %v", err)
+		log.Printf(" Erro na limpeza de eventos: %v", err)
 		http.Error(w, "Erro na limpeza de eventos", http.StatusInternalServerError)
 		return
 	}
@@ -710,16 +716,16 @@ func (s *Server) handleCleanupInactive(w http.ResponseWriter, r *http.Request) {
 	// 4. Relatório final
 	totalAfter, inactiveAfter, err := s.storage.GetUnregisteredDevicesCount()
 	if err != nil {
-		log.Printf("❌ Erro ao contar dispositivos finais: %v", err)
+		log.Printf(" Erro ao contar dispositivos finais: %v", err)
 		http.Error(w, "Erro ao contar dispositivos", http.StatusInternalServerError)
 		return
 	}
 
-	log.Printf("✅ Limpeza manual concluída:")
-	log.Printf("   📱 Dispositivos removidos: %d", removedDevices)
-	log.Printf("   📋 Eventos removidos: %d", removedEvents)
-	log.Printf("   📊 Dispositivos não cadastrados: %d → %d", totalBefore, totalAfter)
-	log.Printf("   😴 Dispositivos inativos: %d → %d", inactiveBefore, inactiveAfter)
+	log.Printf(" Limpeza manual concluída:")
+	log.Printf(" Dispositivos removidos: %d", removedDevices)
+	log.Printf(" Eventos removidos: %d", removedEvents)
+	log.Printf(" Dispositivos não cadastrados: %d → %d", totalBefore, totalAfter)
+	log.Printf(" Dispositivos inativos: %d → %d", inactiveBefore, inactiveAfter)
 
 	// Retorna resposta
 	response := map[string]interface{}{
@@ -785,7 +791,7 @@ func (s *Server) handleGenerateQRCode(w http.ResponseWriter, r *http.Request) {
 	// Converte para base64
 	qrBase64 := base64.StdEncoding.EncodeToString(qrCode)
 
-	log.Printf("✓ QR Code gerado: %s (expira em 24h)", registerURL)
+	log.Printf(" QR Code gerado: %s (expira em 24h)", registerURL)
 
 	// Retorna resposta
 	response := map[string]interface{}{
@@ -904,7 +910,7 @@ func (s *Server) handleRegistrationSubmit(w http.ResponseWriter, r *http.Request
 	}
 
 	if macAddress == "" {
-		log.Printf("⚠️  Não foi possível detectar MAC address para %s", submission.Name)
+		log.Printf(" Não foi possível detectar MAC address para %s", submission.Name)
 		http.Error(w, "Não foi possível detectar seu dispositivo. Tente conectar ao Wi-Fi primeiro.", http.StatusBadRequest)
 		return
 	}
@@ -952,7 +958,7 @@ func (s *Server) handleRegistrationSubmit(w http.ResponseWriter, r *http.Request
 		log.Printf("Erro ao marcar token como usado: %v", err)
 	}
 
-	log.Printf("✓ Colaborador cadastrado via QR Code: %s (%s) - MAC: %s",
+	log.Printf(" Colaborador cadastrado via QR Code: %s (%s) - MAC: %s",
 		submission.Name, submission.Department, macAddress)
 
 	w.Header().Set("Content-Type", "application/json")
@@ -1035,7 +1041,7 @@ func (s *Server) getMACFromIP(remoteAddr string) string {
 				if len(field) == 17 && strings.Count(field, ":") == 5 {
 					// Valida se é um MAC válido
 					if isValidMAC(field) {
-						log.Printf("✓ MAC detectado via ARP: %s", field)
+						log.Printf(" MAC detectado via ARP: %s", field)
 						return field
 					}
 				}
@@ -1043,7 +1049,7 @@ func (s *Server) getMACFromIP(remoteAddr string) string {
 		}
 	}
 
-	log.Printf("⚠️  Não foi possível detectar MAC via ARP para IP %s", ip)
+	log.Printf(" Não foi possível detectar MAC via ARP para IP %s", ip)
 
 	// Fallback: consulta dispositivos recentes (menos confiável)
 	devices, err := s.storage.GetAllDevices()
@@ -1096,7 +1102,7 @@ func isValidMAC(mac string) bool {
 		}
 		// Verifica se é hexadecimal
 		for _, c := range part {
-			if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			if (c < '0' || c > '9') && (c < 'a' || c > 'f') && (c < 'A' || c > 'F') {
 				return false
 			}
 		}

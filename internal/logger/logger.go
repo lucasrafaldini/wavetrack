@@ -59,7 +59,7 @@ func (l *EventLogger) LogEvent(event *models.PresenceEvent) error {
 	currentFilename := filepath.Base(l.filePath)
 
 	if expectedFilename != currentFilename {
-		l.logFile.Close()
+		_ = l.logFile.Close()
 		if err := l.openLogFile(); err != nil {
 			return err
 		}

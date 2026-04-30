@@ -1,285 +1,285 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WaveTrack - Dashboard de Gerenciamento</title>
-    <link rel="stylesheet" href="css/style.css">
+ <meta charset="UTF-8">
+ <meta name="viewport" content="width=device-width, initial-scale=1.0">
+ <title>WaveTrack - Dashboard de Gerenciamento</title>
+ <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-    <div class="container">
-        <header>
-            <h1>📡 WaveTrack</h1>
-            <p class="subtitle">Sistema de Monitoramento de Presença Wi-Fi</p>
-        </header>
+ <div class="container">
+ <header>
+ <h1> WaveTrack</h1>
+ <p class="subtitle">Sistema de Monitoramento de Presença Wi-Fi</p>
+ </header>
 
-        <div class="stats">
-            <div class="stat-card">
-                <div class="stat-number" id="totalDevices">0</div>
-                <div class="stat-label">Dispositivos Detectados</div>
-                <div style="font-size: 0.75em; color: #999; margin-top: 8px; line-height: 1.3;">
-                    Todos os dispositivos já vistos pela rede
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="activeDevices">0</div>
-                <div class="stat-label">Dispositivos Ativos</div>
-                <div style="font-size: 0.75em; color: #999; margin-top: 8px; line-height: 1.3;">
-                    Vistos nos últimos 20 minutos
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="totalEmployees">0</div>
-                <div class="stat-label">Funcionários Cadastrados</div>
-                <div style="font-size: 0.75em; color: #999; margin-top: 8px; line-height: 1.3;">
-                    Total de funcionários no sistema
-                </div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-number" id="presentEmployees">0</div>
-                <div class="stat-label">Funcionários Presentes</div>
-                <div style="font-size: 0.75em; color: #999; margin-top: 8px; line-height: 1.3;">
-                    Funcionários com dispositivos ativos
-                </div>
-            </div>
-        </div>
+ <div class="stats">
+ <div class="stat-card">
+ <div class="stat-number" id="totalDevices">0</div>
+ <div class="stat-label">Dispositivos Detectados</div>
+ <div style="font-size: 0.75em; color: #999; margin-top: 8px; line-height: 1.3;">
+ Todos os dispositivos já vistos pela rede
+ </div>
+ </div>
+ <div class="stat-card">
+ <div class="stat-number" id="activeDevices">0</div>
+ <div class="stat-label">Dispositivos Ativos</div>
+ <div style="font-size: 0.75em; color: #999; margin-top: 8px; line-height: 1.3;">
+ Vistos nos últimos 20 minutos
+ </div>
+ </div>
+ <div class="stat-card">
+ <div class="stat-number" id="totalEmployees">0</div>
+ <div class="stat-label">Funcionários Cadastrados</div>
+ <div style="font-size: 0.75em; color: #999; margin-top: 8px; line-height: 1.3;">
+ Total de funcionários no sistema
+ </div>
+ </div>
+ <div class="stat-card">
+ <div class="stat-number" id="presentEmployees">0</div>
+ <div class="stat-label">Funcionários Presentes</div>
+ <div style="font-size: 0.75em; color: #999; margin-top: 8px; line-height: 1.3;">
+ Funcionários com dispositivos ativos
+ </div>
+ </div>
+ </div>
 
-        <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 30px; border-left: 4px solid #667eea;">
-            <p style="margin: 0; color: #555; font-size: 0.9em; line-height: 1.6;">
-                <strong style="color: #667eea;">ℹ️ Sobre os dispositivos:</strong><br>
-                <span style="color: #666;">
-                    • <strong>Detectado</strong> = Já foi visto alguma vez na rede (histórico completo)<br>
-                    • <strong>Ativo</strong> = Visto nos últimos 20 minutos (pode não estar conectado, apenas próximo)<br>
-                    • <strong>Conectado</strong> = Está transmitindo dados ativamente na rede agora<br>
-                    <em style="color: #999;">Nota: Um dispositivo pode estar ativo (próximo) mas não conectado (sem usar a rede).</em>
-                </span>
-            </p>
-        </div>
+ <div style="background: #f8f9fa; padding: 15px; border-radius: 10px; margin-bottom: 30px; border-left: 4px solid #667eea;">
+ <p style="margin: 0; color: #555; font-size: 0.9em; line-height: 1.6;">
+ <strong style="color: #667eea;"> Sobre os dispositivos:</strong><br>
+ <span style="color: #666;">
+ • <strong>Detectado</strong> = Já foi visto alguma vez na rede (histórico completo)<br>
+ • <strong>Ativo</strong> = Visto nos últimos 20 minutos (pode não estar conectado, apenas próximo)<br>
+ • <strong>Conectado</strong> = Está transmitindo dados ativamente na rede agora<br>
+ <em style="color: #999;">Nota: Um dispositivo pode estar ativo (próximo) mas não conectado (sem usar a rede).</em>
+ </span>
+ </p>
+ </div>
 
-        <div class="main-content">
-            <div class="card">
-                <!-- Tabs de navegação -->
-                <div class="tabs">
-                    <button class="tab active" onclick="switchTab('current')">
-                        🔴 Tempo Real
-                    </button>
-                    <button class="tab" onclick="switchTab('history')">
-                        📊 Histórico (7 dias)
-                    </button>
-                    <button class="tab" onclick="switchTab('employees')">
-                        👥 Colaboradores
-                    </button>
-                </div>
+ <div class="main-content">
+ <div class="card">
+ <!-- Tabs de navegação -->
+ <div class="tabs">
+ <button class="tab active" onclick="switchTab('current')">
+ Tempo Real
+ </button>
+ <button class="tab" onclick="switchTab('history')">
+ Histórico (7 dias)
+ </button>
+ <button class="tab" onclick="switchTab('employees')">
+ Colaboradores
+ </button>
+ </div>
 
-                <!-- Aba: Tempo Real -->
-                <div id="tab-current" class="tab-content active">
-                    <h2>🔍 Dispositivos Conectados</h2>
-                    <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap: wrap;">
-                        <label style="display:flex; align-items:center; gap:8px;">
-                            <input type="checkbox" id="onlyEmployees" /> Somente funcionários
-                        </label>
-                        <button class="btn btn-success" onclick="downloadReport()" style="margin-left:auto;">
-                            📊 Relatório Hoje
-                        </button>
-                        <button class="btn btn-danger" onclick="cleanupInactive()">
-                            🗑️ Eliminar inativos
-                        </button>
-                    </div>
-                    <div id="devicesTableContainer">
-                        <table id="devicesTable">
-                            <thead>
-                                <tr>
-                                    <th class="sortable" onclick="sortTable('status')">Status<span id="sort-status" class="sort-icon"></span></th>
-                                    <th>MAC Address</th>
-                                    <th>Tipo</th>
-                                    <th>Fabricante</th>
-                                    <th class="sortable" onclick="sortTable('name')">Funcionário<span id="sort-name" class="sort-icon"></span></th>
-                                    <th class="sortable" onclick="sortTable('arrival')">Chegada<span id="sort-arrival" class="sort-icon"></span></th>
-                                    <th>Sinal / Canal</th>
-                                    <th class="sortable" onclick="sortTable('duration')">Tempo online<span id="sort-duration" class="sort-icon"></span></th>
-                                    <th class="sortable" onclick="sortTable('lastseen')">Última atividade<span id="sort-lastseen" class="sort-icon"></span></th>
-                                    <th>Ação</th>
-                                </tr>
-                            </thead>
-                            <tbody id="devicesBody">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
+ <!-- Aba: Tempo Real -->
+ <div id="tab-current" class="tab-content active">
+ <h2> Dispositivos Conectados</h2>
+ <div style="display:flex; gap:12px; align-items:center; margin-bottom:16px; flex-wrap: wrap;">
+ <label style="display:flex; align-items:center; gap:8px;">
+ <input type="checkbox" id="onlyEmployees" /> Somente funcionários
+ </label>
+ <button class="btn btn-success" onclick="downloadReport()" style="margin-left:auto;">
+ Relatório Hoje
+ </button>
+ <button class="btn btn-danger" onclick="cleanupInactive()">
+ Eliminar inativos
+ </button>
+ </div>
+ <div id="devicesTableContainer">
+ <table id="devicesTable">
+ <thead>
+ <tr>
+ <th class="sortable" onclick="sortTable('status')">Status<span id="sort-status" class="sort-icon"></span></th>
+ <th>MAC Address</th>
+ <th>Tipo</th>
+ <th>Fabricante</th>
+ <th class="sortable" onclick="sortTable('name')">Funcionário<span id="sort-name" class="sort-icon"></span></th>
+ <th class="sortable" onclick="sortTable('arrival')">Chegada<span id="sort-arrival" class="sort-icon"></span></th>
+ <th>Sinal / Canal</th>
+ <th class="sortable" onclick="sortTable('duration')">Tempo online<span id="sort-duration" class="sort-icon"></span></th>
+ <th class="sortable" onclick="sortTable('lastseen')">Última atividade<span id="sort-lastseen" class="sort-icon"></span></th>
+ <th>Ação</th>
+ </tr>
+ </thead>
+ <tbody id="devicesBody">
+ </tbody>
+ </table>
+ </div>
+ </div>
 
-                <!-- Aba: Histórico -->
-                <div id="tab-history" class="tab-content">
-                    <h2>📊 Histórico de Presença - Últimos 7 Dias</h2>
-                    <div id="historyContainer"></div>
-                </div>
+ <!-- Aba: Histórico -->
+ <div id="tab-history" class="tab-content">
+ <h2> Histórico de Presença - Últimos 7 Dias</h2>
+ <div id="historyContainer"></div>
+ </div>
 
-                <!-- Aba: Colaboradores -->
-                <div id="tab-employees" class="tab-content">
-                    <h2>👥 Gerenciamento de Colaboradores</h2>
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-                        <p style="color:#666; margin:0;">Total de <strong id="employeeCount">0</strong> colaborador(es) cadastrado(s)</p>
-                        <div style="display:flex; gap:10px;">
-                            <button class="btn btn-primary" onclick="openQRCodeModal()">
-                                🔲 Gerar QR Code
-                            </button>
-                            <button class="btn btn-success" onclick="openNewEmployeeModal()">
-                                ➕ Novo Colaborador
-                            </button>
-                        </div>
-                    </div>
-                    <div id="employeesTableContainer">
-                        <table id="employeesTable">
-                            <thead>
-                                <tr>
-                                    <th>Nome</th>
-                                    <th>MAC Address</th>
-                                    <th>Departamento</th>
-                                    <th>Tipo de Dispositivo</th>
-                                    <th>Fabricante</th>
-                                    <th>Data de Cadastro</th>
-                                    <th>Ações</th>
-                                </tr>
-                            </thead>
-                            <tbody id="employeesBody">
-                            </tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
-    </div>
+ <!-- Aba: Colaboradores -->
+ <div id="tab-employees" class="tab-content">
+ <h2> Gerenciamento de Colaboradores</h2>
+ <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+ <p style="color:#666; margin:0;">Total de <strong id="employeeCount">0</strong> colaborador(es) cadastrado(s)</p>
+ <div style="display:flex; gap:10px;">
+ <button class="btn btn-primary" onclick="openQRCodeModal()">
+ Gerar QR Code
+ </button>
+ <button class="btn btn-success" onclick="openNewEmployeeModal()">
+ Novo Colaborador
+ </button>
+ </div>
+ </div>
+ <div id="employeesTableContainer">
+ <table id="employeesTable">
+ <thead>
+ <tr>
+ <th>Nome</th>
+ <th>MAC Address</th>
+ <th>Departamento</th>
+ <th>Tipo de Dispositivo</th>
+ <th>Fabricante</th>
+ <th>Data de Cadastro</th>
+ <th>Ações</th>
+ </tr>
+ </thead>
+ <tbody id="employeesBody">
+ </tbody>
+ </table>
+ </div>
+ </div>
+ </div>
+ </div>
+ </div>
 
-    <!-- Modal de Cadastro -->
-    <div id="associateModal" class="modal">
-        <div class="modal-content">
-            <h2 id="modalTitle">👤 Cadastrar Funcionário</h2>
-            <form id="associateForm">
-                <div class="form-group">
-                    <label>MAC Address</label>
-                    <input type="text" id="modalMAC" readonly class="mac-address">
-                </div>
-                <div class="form-group">
-                    <label>Nome do Funcionário *</label>
-                    <input type="text" id="employeeName" required placeholder="Digite o nome completo">
-                </div>
-                <div class="form-group">
-                    <label>Departamento</label>
-                    <input type="text" id="employeeDepartment" placeholder="Ex: TI, RH, Vendas">
-                </div>
-                <div class="form-group">
-                    <label>Tipo de Dispositivo</label>
-                    <select id="deviceType">
-                        <option value="">Detectado automaticamente</option>
-                        <optgroup label="Notebooks">
-                            <option value="notebook-windows">Notebook Windows</option>
-                            <option value="notebook-mac">Notebook Mac</option>
-                            <option value="notebook-linux">Notebook Linux</option>
-                        </optgroup>
-                        <optgroup label="Smartphones">
-                            <option value="iphone-17">iPhone 17</option>
-                            <option value="iphone-16">iPhone 16</option>
-                            <option value="iphone-15">iPhone 15</option>
-                            <option value="iphone-14">iPhone 14</option>
-                            <option value="iphone-13">iPhone 13</option>
-                            <option value="iphone-12">iPhone 12</option>
-                            <option value="samsung-s24">Samsung Galaxy S24</option>
-                            <option value="samsung-s23">Samsung Galaxy S23</option>
-                            <option value="samsung-a54">Samsung Galaxy A54</option>
-                            <option value="xiaomi-13">Xiaomi 13</option>
-                            <option value="xiaomi-redmi">Xiaomi Redmi Note</option>
-                            <option value="motorola-edge">Motorola Edge</option>
-                            <option value="motorola-moto-g">Moto G</option>
-                        </optgroup>
-                        <optgroup label="Tablets">
-                            <option value="ipad-pro">iPad Pro</option>
-                            <option value="ipad-air">iPad Air</option>
-                            <option value="ipad">iPad</option>
-                            <option value="samsung-tab-s9">Samsung Galaxy Tab S9</option>
-                            <option value="samsung-tab-a">Samsung Galaxy Tab A</option>
-                        </optgroup>
-                    </select>
-                </div>
-                <div class="form-group">
-                    <label>Fabricante</label>
-                    <select id="deviceVendor">
-                        <option value="">Detectado automaticamente</option>
-                        <option value="Apple">Apple</option>
-                        <option value="Samsung">Samsung</option>
-                        <option value="Xiaomi">Xiaomi</option>
-                        <option value="Motorola">Motorola</option>
-                        <option value="Dell">Dell</option>
-                        <option value="HP">HP</option>
-                        <option value="Lenovo">Lenovo</option>
-                        <option value="Asus">Asus</option>
-                        <option value="Acer">Acer</option>
-                        <option value="LG">LG</option>
-                        <option value="Huawei">Huawei</option>
-                        <option value="OnePlus">OnePlus</option>
-                        <option value="Google">Google</option>
-                        <option value="Microsoft">Microsoft</option>
-                        <option value="Sony">Sony</option>
-                    </select>
-                </div>
-                <div style="display: flex; gap: 10px; margin-top: 30px;">
-                    <button type="submit" class="btn btn-success" style="flex: 1;">Salvar</button>
-                    <button type="button" class="btn btn-primary" onclick="closeModal()" style="flex: 1;">Cancelar</button>
-                </div>
-            </form>
-        </div>
-    </div>
+ <!-- Modal de Cadastro -->
+ <div id="associateModal" class="modal">
+ <div class="modal-content">
+ <h2 id="modalTitle"> Cadastrar Funcionário</h2>
+ <form id="associateForm">
+ <div class="form-group">
+ <label>MAC Address</label>
+ <input type="text" id="modalMAC" readonly class="mac-address">
+ </div>
+ <div class="form-group">
+ <label>Nome do Funcionário *</label>
+ <input type="text" id="employeeName" required placeholder="Digite o nome completo">
+ </div>
+ <div class="form-group">
+ <label>Departamento</label>
+ <input type="text" id="employeeDepartment" placeholder="Ex: TI, RH, Vendas">
+ </div>
+ <div class="form-group">
+ <label>Tipo de Dispositivo</label>
+ <select id="deviceType">
+ <option value="">Detectado automaticamente</option>
+ <optgroup label="Notebooks">
+ <option value="notebook-windows">Notebook Windows</option>
+ <option value="notebook-mac">Notebook Mac</option>
+ <option value="notebook-linux">Notebook Linux</option>
+ </optgroup>
+ <optgroup label="Smartphones">
+ <option value="iphone-17">iPhone 17</option>
+ <option value="iphone-16">iPhone 16</option>
+ <option value="iphone-15">iPhone 15</option>
+ <option value="iphone-14">iPhone 14</option>
+ <option value="iphone-13">iPhone 13</option>
+ <option value="iphone-12">iPhone 12</option>
+ <option value="samsung-s24">Samsung Galaxy S24</option>
+ <option value="samsung-s23">Samsung Galaxy S23</option>
+ <option value="samsung-a54">Samsung Galaxy A54</option>
+ <option value="xiaomi-13">Xiaomi 13</option>
+ <option value="xiaomi-redmi">Xiaomi Redmi Note</option>
+ <option value="motorola-edge">Motorola Edge</option>
+ <option value="motorola-moto-g">Moto G</option>
+ </optgroup>
+ <optgroup label="Tablets">
+ <option value="ipad-pro">iPad Pro</option>
+ <option value="ipad-air">iPad Air</option>
+ <option value="ipad">iPad</option>
+ <option value="samsung-tab-s9">Samsung Galaxy Tab S9</option>
+ <option value="samsung-tab-a">Samsung Galaxy Tab A</option>
+ </optgroup>
+ </select>
+ </div>
+ <div class="form-group">
+ <label>Fabricante</label>
+ <select id="deviceVendor">
+ <option value="">Detectado automaticamente</option>
+ <option value="Apple">Apple</option>
+ <option value="Samsung">Samsung</option>
+ <option value="Xiaomi">Xiaomi</option>
+ <option value="Motorola">Motorola</option>
+ <option value="Dell">Dell</option>
+ <option value="HP">HP</option>
+ <option value="Lenovo">Lenovo</option>
+ <option value="Asus">Asus</option>
+ <option value="Acer">Acer</option>
+ <option value="LG">LG</option>
+ <option value="Huawei">Huawei</option>
+ <option value="OnePlus">OnePlus</option>
+ <option value="Google">Google</option>
+ <option value="Microsoft">Microsoft</option>
+ <option value="Sony">Sony</option>
+ </select>
+ </div>
+ <div style="display: flex; gap: 10px; margin-top: 30px;">
+ <button type="submit" class="btn btn-success" style="flex: 1;">Salvar</button>
+ <button type="button" class="btn btn-primary" onclick="closeModal()" style="flex: 1;">Cancelar</button>
+ </div>
+ </form>
+ </div>
+ </div>
 
-    <!-- Modal do QR Code -->
-    <div id="qrModal" class="modal">
-        <div class="modal-content" style="max-width: 500px;">
-            <span class="close" onclick="closeQRModal()">&times;</span>
-            <h2 style="margin-bottom: 20px;">🔲 QR Code de Cadastro</h2>
-            
-            <div id="qrLoading" style="text-align:center; padding:40px; display:none;">
-                <div style="margin: 0 auto; width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid #4CAF50; border-radius: 50%; animation: spin 1s linear infinite;"></div>
-                <p style="margin-top:15px; color:#666;">Gerando QR Code...</p>
-            </div>
+ <!-- Modal do QR Code -->
+ <div id="qrModal" class="modal">
+ <div class="modal-content" style="max-width: 500px;">
+ <span class="close" onclick="closeQRModal()">&times;</span>
+ <h2 style="margin-bottom: 20px;"> QR Code de Cadastro</h2>
 
-            <div id="qrContent" style="display:none;">
-                <div style="background:#f9f9f9; padding:20px; border-radius:10px; text-align:center; margin-bottom:20px;">
-                    <img id="qrCodeImage" src="" alt="QR Code" style="max-width:100%; height:auto; border-radius:8px;">
-                </div>
+ <div id="qrLoading" style="text-align:center; padding:40px; display:none;">
+ <div style="margin: 0 auto; width: 50px; height: 50px; border: 4px solid #f3f3f3; border-top: 4px solid #4CAF50; border-radius: 50%; animation: spin 1s linear infinite;"></div>
+ <p style="margin-top:15px; color:#666;">Gerando QR Code...</p>
+ </div>
 
-                <div style="background:#e8f5e9; border-left:4px solid #4CAF50; padding:15px; border-radius:5px; margin-bottom:15px;">
-                    <p style="margin:0; font-size:14px; line-height:1.6;">
-                        <strong>📱 Instruções:</strong><br>
-                        1. Peça ao novo colaborador para escanear este QR Code<br>
-                        2. O colaborador deve estar conectado à mesma rede Wi-Fi<br>
-                        3. O QR Code expira em <strong>24 horas</strong><br>
-                        4. Pode ser usado <strong>apenas uma vez</strong>
-                    </p>
-                </div>
+ <div id="qrContent" style="display:none;">
+ <div style="background:#f9f9f9; padding:20px; border-radius:10px; text-align:center; margin-bottom:20px;">
+ <img id="qrCodeImage" src="" alt="QR Code" style="max-width:100%; height:auto; border-radius:8px;">
+ </div>
 
-                <div style="background:#fff3e0; border-left:4px solid #ff9800; padding:15px; border-radius:5px; margin-bottom:20px;">
-                    <p style="margin:0; font-size:13px;">
-                        ⏱️ Este QR Code expira em <strong id="qrExpiration">24 horas</strong>
-                    </p>
-                </div>
+ <div style="background:#e8f5e9; border-left:4px solid #4CAF50; padding:15px; border-radius:5px; margin-bottom:15px;">
+ <p style="margin:0; font-size:14px; line-height:1.6;">
+ <strong> Instruções:</strong><br>
+ 1. Peça ao novo colaborador para escanear este QR Code<br>
+ 2. O colaborador deve estar conectado à mesma rede Wi-Fi<br>
+ 3. O QR Code expira em <strong>24 horas</strong><br>
+ 4. Pode ser usado <strong>apenas uma vez</strong>
+ </p>
+ </div>
 
-                <div style="display:flex; gap:10px;">
-                    <button class="btn btn-primary" onclick="copyQRLink()" style="flex:1;">
-                        📋 Copiar Link
-                    </button>
-                    <button class="btn btn-success" onclick="closeQRModal()" style="flex:1;">
-                        ✓ Fechar
-                    </button>
-                </div>
-            </div>
+ <div style="background:#fff3e0; border-left:4px solid #ff9800; padding:15px; border-radius:5px; margin-bottom:20px;">
+ <p style="margin:0; font-size:13px;">
+ Este QR Code expira em <strong id="qrExpiration">24 horas</strong>
+ </p>
+ </div>
 
-            <div id="qrError" style="display:none; background:#ffebee; border-left:4px solid #f44336; padding:15px; border-radius:5px;">
-                <p style="margin:0; color:#c62828;" id="qrErrorMessage"></p>
-            </div>
-        </div>
-    </div>
+ <div style="display:flex; gap:10px;">
+ <button class="btn btn-primary" onclick="copyQRLink()" style="flex:1;">
+ Copiar Link
+ </button>
+ <button class="btn btn-success" onclick="closeQRModal()" style="flex:1;">
+ Fechar
+ </button>
+ </div>
+ </div>
 
-    <button class="refresh-btn" onclick="loadData()" title="Atualizar dados">
-        ↻
-    </button>
+ <div id="qrError" style="display:none; background:#ffebee; border-left:4px solid #f44336; padding:15px; border-radius:5px;">
+ <p style="margin:0; color:#c62828;" id="qrErrorMessage"></p>
+ </div>
+ </div>
+ </div>
 
-    <script src="js/app.js?v=7"></script>
+ <button class="refresh-btn" onclick="loadData()" title="Atualizar dados">
+ ↻
+ </button>
+
+ <script src="js/app.js?v=7"></script>
 </body>
 </html>

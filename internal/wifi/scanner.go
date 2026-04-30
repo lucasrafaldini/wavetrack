@@ -47,7 +47,7 @@ func (s *Scanner) Start() error {
 	if err := s.handle.SetBPFFilter(filter); err != nil {
 		// Se falhar, usa filtro ARP (modo compatibilidade para macOS/Windows)
 		log.Printf("Modo 802.11 não disponível, usando modo ARP (compatibilidade)")
-		log.Printf("⚠️  Dados limitados: sem RSSI, frequência ou canal")
+		log.Printf(" Dados limitados: sem RSSI, frequência ou canal")
 		s.monitorMode = false
 		filter = "arp or (udp and port 67) or (udp and port 68)"
 		if err := s.handle.SetBPFFilter(filter); err != nil {
@@ -55,8 +55,8 @@ func (s *Scanner) Start() error {
 			// Continua sem filtro (captura tudo)
 		}
 	} else {
-		log.Printf("✓ Modo monitor 802.11 ativado - captura completa habilitada")
-		log.Printf("✓ Dados disponíveis: RSSI, frequência, canal, taxa de transmissão")
+		log.Printf(" Modo monitor 802.11 ativado - captura completa habilitada")
+		log.Printf(" Dados disponíveis: RSSI, frequência, canal, taxa de transmissão")
 		s.monitorMode = true
 	}
 
