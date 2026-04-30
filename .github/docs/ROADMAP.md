@@ -49,6 +49,7 @@
 - [ ] Arquitetura distribuída
 - [ ] Métricas Prometheus/Grafana
 - [ ] Docker e Docker Compose
+- [ ] Suporte nativo e compilação de binários para Windows
 
 ## Melhorias Técnicas Contínuas
 
@@ -74,7 +75,7 @@
 - **Cobertura de Testes**: 80%+
 - **Performance**: < 100ms tempo de resposta API
 - **Uptime**: 99.9%
-- **Compatibilidade**: Linux, macOS
+- **Compatibilidade**: Linux, macOS (futuro suporte ao Windows)
 - **Documentação**: Completa e atualizada
 
 ## Cronograma Estimado
