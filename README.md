@@ -2,7 +2,7 @@
 
 Sistema de monitoramento de presença baseado em detecção de dispositivos Wi-Fi. O WaveTrack captura handshakes de dispositivos em uma rede Wi-Fi para registrar automaticamente a presença de funcionários.
 
-> **[Quick Start Guide](.github/docs/QUICKSTART.md)** | [Documentação Completa](.github/docs/SUMMARY.md) | [API Examples](.github/docs/API_EXAMPLES.md) | [Deploy Guide](.github/docs/DEPLOY.md) | [Contributing](.github/docs/CONTRIBUTING.md)
+> **[Quick Start Guide](.github/docs/QUICKSTART.md)** | [Design Document](.github/docs/SDD.md) | [Deploy Guide](.github/docs/DEPLOY.md) | [Contributing](.github/docs/CONTRIBUTING.md) | [Changelog](.github/docs/CHANGELOG.md)
 
 ## Funcionalidades
 
@@ -424,15 +424,14 @@ Os eventos são salvos em formato JSON rotacionado diariamente (`logs/presence_Y
 7. **Histórico Preservado**: Ao deletar um colaborador, todo o histórico de presença é mantido no banco para fins de relatórios e auditoria
 8. **Migração de Dados**: Ao editar o MAC de um colaborador, todo o histórico é automaticamente migrado para o novo MAC
 
-## Documentação Adicional
+## Documentação
 
-- **[HISTORY_PRESERVATION.md](.github/docs/HISTORY_PRESERVATION.md)** - Como o sistema preserva e gerencia histórico
-- **[SEED_HISTORY.md](.github/docs/SEED_HISTORY.md)** - Como gerar dados de teste para desenvolvimento
-- **[TABS_HISTORICO.md](.github/docs/TABS_HISTORICO.md)** - Documentação do sistema de abas e histórico
+- **[SDD.md](.github/docs/SDD.md)** - Software Design Document (arquitetura, componentes, decisões de design)
 - **[QUICKSTART.md](.github/docs/QUICKSTART.md)** - Guia rápido de início
-- **[API_EXAMPLES.md](.github/docs/API_EXAMPLES.md)** - Exemplos de uso da API
 - **[DEPLOY.md](.github/docs/DEPLOY.md)** - Guia de deployment
 - **[CONTRIBUTING.md](.github/docs/CONTRIBUTING.md)** - Como contribuir com o projeto
+- **[CHANGELOG.md](.github/docs/CHANGELOG.md)** - Histórico de mudanças
+- **[ROADMAP.md](.github/docs/ROADMAP.md)** - Roadmap de desenvolvimento
 
 ## Roadmap
 
