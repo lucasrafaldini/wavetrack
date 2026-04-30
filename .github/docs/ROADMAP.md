@@ -1,69 +1,59 @@
 # WaveTrack - Roadmap de Desenvolvimento
 
+## Versões Lançadas
+
+### v1.0 - Sistema Base (Outubro 2025)
+- [x] Captura Wi-Fi com detecção de dispositivos
+- [x] Interface web com sistema de abas (Tempo Real, Histórico, Colaboradores)
+- [x] CRUD completo de colaboradores via interface
+- [x] API REST (6 endpoints)
+- [x] Banco de dados SQLite com histórico permanente
+- [x] Edição com migração automática de histórico
+- [x] Preservação de dados ao deletar colaboradores
+
+### v2.0 - Sistema de Identificação Avançado (Abril 2026)
+- [x] **Integração com OUIja** - Biblioteca própria para consulta MAC Address
+  - Base IEEE oficial via Wireshark (38k+ OUIs vs ~50 hardcoded)
+  - Cache inteligente em memória
+  - Atualização automática (TTL 7 dias)
+- [x] **API de vendor lookup** - 4 novos endpoints
+  - `POST /api/vendor/details` - Detalhes de um MAC
+  - `POST /api/vendor/search` - Busca fabricantes por padrão
+  - `GET /api/vendor/top` - Top fabricantes por OUIs registrados
+  - `GET /api/vendor/stats` - Estatísticas da base OUI
+- [x] **Remoção da base OUI hardcoded** - Código reduzido de 738 para 507 linhas
+- [x] **CI/CD com GitHub Actions**
+  - Lint: go vet, gofmt, go mod tidy, golangci-lint
+  - Testes com race detector e coverage report
+  - Benchmarks com benchmem
+  - Build matrix (linux/amd64, darwin/arm64, darwin/amd64)
+
 ## Próximas Versões
 
-### v2.0 - Sistema de Identificação Avançado
-- ** Biblioteca própria de consulta MAC Address**
- - Substituir base OUI hardcoded por biblioteca dinâmica
- - Implementar carregamento de base OUI atualizada do IEEE
- - Sistema de cache inteligente para otimização de performance
- - Suporte a múltiplas fontes de dados OUI (IEEE, fabricantes, custom)
- - API para atualização automática da base de dados
-
-- ** Inteligência de Classificação Melhorada**
- - Machine Learning para inferência de tipos de dispositivos
- - Análise de padrões de comportamento de rede
- - Classificação baseada em características de tráfego
- - Sistema de aprendizado adaptativo
-
 ### v2.1 - Interface e UX
-- ** Interface Web Responsiva**
- - Design mobile-first
- - Dashboard em tempo real aprimorado
- - Visualizações interativas com gráficos
- - Sistema de notificações push
-
-- ** Configuração Avançada**
- - Interface web para configurações
- - Profiles de detecção personalizáveis
- - Configuração de alertas customizados
- - Sistema de backup e restore
+- [ ] Interface web responsiva (mobile-first)
+- [ ] Dashboard com gráficos interativos
+- [ ] Sistema de notificações push
+- [ ] Interface web para configurações
+- [ ] Profiles de detecção personalizáveis
 
 ### v2.2 - Recursos Empresariais
-- ** Multi-tenant**
- - Suporte a múltiplas organizações
- - Controle de acesso baseado em roles
- - Dashboard administrativo
- - Relatórios por departamento
+- [ ] Relatórios de presença (PDF/CSV/Excel)
+- [ ] Notificações por webhook (email/Slack)
+- [ ] Suporte a múltiplos dispositivos por colaborador
+- [ ] Autenticação e controle de acesso
+- [ ] Integração com sistemas de RH
 
-- ** Analytics Avançados**
- - Relatórios de presença detalhados
- - Análise de padrões de trabalho
- - Métricas de produtividade
- - Exportação para BI tools
-
-### v3.0 - Escalabilidade e Performance
-- ** Arquitetura Distribuída**
- - Suporte a múltiplos scanners
- - Sistema de clustering
- - Load balancing
- - High availability
-
-- ** Integrações**
- - APIs REST completas
- - Webhooks para sistemas externos
- - Integração com Slack/Teams
- - Conectores para sistemas RH
+### v3.0 - Escalabilidade
+- [ ] Suporte a múltiplos scanners
+- [ ] Arquitetura distribuída
+- [ ] Métricas Prometheus/Grafana
+- [ ] Docker e Docker Compose
 
 ## Melhorias Técnicas Contínuas
 
 ### Identificação de Dispositivos
-- [ ] **Biblioteca MAC Address própria** (v2.0 - Prioridade Alta)
- - Criar módulo dedicado para consulta OUI
- - Implementar cache distribuído
- - Suporte a atualizações automáticas
- - Fallback para múltiplas fontes
-
+- [x] Biblioteca MAC Address própria (OUIja)
 - [ ] Fingerprinting avançado baseado em comportamento
 - [ ] Detecção de dispositivos virtualizados/emulados
 - [ ] Identificação de IoT devices por padrões de tráfego
@@ -71,45 +61,29 @@
 ### Performance e Confiabilidade
 - [ ] Otimização de memória para ambientes limitados
 - [ ] Sistema de health checks
-- [ ] Logs estruturados (JSON)
 - [ ] Métricas Prometheus/Grafana
 
 ### Segurança
 - [ ] Autenticação e autorização
 - [ ] Criptografia de dados sensíveis
 - [ ] Auditoria de ações
-- [ ] GDPR compliance
-
-### Usabilidade
-- [ ] Wizard de configuração inicial
-- [ ] Templates de configuração
-- [ ] Sistema de ajuda contextual
-- [ ] Documentação interativa
+- [ ] LGPD/GDPR compliance
 
 ## Metas de Qualidade
 
-- **Cobertura de Testes**: 90%+
-- **Performance**: < 100ms tempo de resposta
+- **Cobertura de Testes**: 80%+
+- **Performance**: < 100ms tempo de resposta API
 - **Uptime**: 99.9%
-- **Compatibilidade**: Linux, Windows, macOS
+- **Compatibilidade**: Linux, macOS
 - **Documentação**: Completa e atualizada
-
-## Contribuições
-
-Para contribuir com o desenvolvimento:
-
-1. Verifique os issues abertos
-2. Siga os padrões de código estabelecidos
-3. Inclua testes para novas funcionalidades
-4. Atualize a documentação conforme necessário
 
 ## Cronograma Estimado
 
-- **v2.0**: Q1 2026 (Biblioteca MAC Address + ML)
-- **v2.1**: Q2 2026 (Interface Responsiva)
-- **v2.2**: Q3 2026 (Recursos Empresariais)
-- **v3.0**: Q4 2026 (Arquitetura Distribuída)
+- **v2.0**: Q2 2026 - Concluído
+- **v2.1**: Q3 2026 (Interface Responsiva)
+- **v2.2**: Q4 2026 (Recursos Empresariais)
+- **v3.0**: Q1 2027 (Escalabilidade)
 
 ---
 
-*Última atualização: Outubro 2025*
+*Última atualização: Abril 2026*

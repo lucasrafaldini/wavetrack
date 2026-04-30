@@ -86,6 +86,12 @@ func (s *Server) SetupRoutes() http.Handler {
 	mux.HandleFunc("/api/history/7days", s.handleHistory7Days)
 	mux.HandleFunc("/api/cleanup/inactive", s.handleCleanupInactive)
 
+	// OUIja vendor lookup endpoints
+	mux.HandleFunc("/api/vendor/details", s.GetDeviceVendorDetails)
+	mux.HandleFunc("/api/vendor/search", s.SearchVendorsByPattern)
+	mux.HandleFunc("/api/vendor/top", s.GetTopVendors)
+	mux.HandleFunc("/api/vendor/stats", s.GetDatabaseStats)
+
 	// Registration via QR Code
 	mux.HandleFunc("/api/register/token", s.handleGenerateQRCode)
 	mux.HandleFunc("/api/register/validate/", s.handleValidateToken)
@@ -662,7 +668,7 @@ func (s *Server) GetDatabaseStats(w http.ResponseWriter, r *http.Request) {
 func (s *Server) enableCORS(handler http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, OPTIONS")
+		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, DELETE, OPTIONS")
 		w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 
 		if r.Method == "OPTIONS" {

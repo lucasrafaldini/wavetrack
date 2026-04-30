@@ -450,34 +450,28 @@ Os eventos são salvos em formato JSON rotacionado diariamente (`logs/presence_Y
 - [x] Sistema de abas (Tempo Real, Histórico, Colaboradores)
 - [x] Organização de código (HTML, CSS, JS separados)
 
-### Próximas Funcionalidades
+### Implementado (v2.0)
+- [x] **Integração com OUIja** - Biblioteca própria para consulta MAC Address
+  - Base IEEE oficial via Wireshark (38k+ OUIs)
+  - Cache inteligente em memória com sync.RWMutex
+  - Atualização automática da base (TTL de 7 dias)
+  - API endpoints: vendor details, search, top vendors, stats
+- [x] **Remoção da base OUI hardcoded** - Substituída pelo OUIja
+- [x] **CI/CD com GitHub Actions** - Lint, testes com coverage, benchmark, build matrix
+- [x] **Endpoints OUIja na API REST** - `/api/vendor/details`, `/search`, `/top`, `/stats`
 
-#### v2.0 - Sistema de Identificação Avançado (Q1 2026)
-- [ ] ** Biblioteca própria para consulta MAC Address** *Prioridade Alta*
- - Substituir base OUI hardcoded por sistema dinâmico
- - Carregamento automático da base IEEE OUI atualizada
- - Cache inteligente e múltiplas fontes de dados
- - API para atualizações automáticas da base de fabricantes
-- [ ] Machine Learning para classificação inteligente de dispositivos
-- [ ] Análise de padrões de comportamento de rede
+### Próximas Funcionalidades
 
 #### v2.1 - Interface e UX
 - [ ] Interface web responsiva (mobile-first)
 - [ ] Dashboard em tempo real aprimorado com gráficos interativos
 - [ ] Sistema de notificações push
 
-#### Funcionalidades Planejadas
+#### v2.2 - Recursos Empresariais
 - [ ] Relatório diário de presença (PDF/CSV)
-- [ ] Notificações por webhook
+- [ ] Notificações por webhook (email/Slack)
 - [ ] Suporte a múltiplos dispositivos por funcionário
-- [ ] Relatórios de frequência avançados (PDF/Excel)
-- [ ] Exportação de dados históricos
-- [ ] Gráficos e dashboards analíticos
-- [ ] Notificações em tempo real (email/Slack)
-- [ ] Suporte a múltiplas interfaces Wi-Fi
 - [ ] Autenticação e controle de acesso
-- [ ] Aplicativo mobile
-- [ ] API de webhooks para eventos
 - [ ] Integração com sistemas de RH
 
 > **Roadmap Completo**: Veja o [ROADMAP.md](.github/docs/ROADMAP.md) para detalhes técnicos e cronograma completo
@@ -492,8 +486,8 @@ Lucas Rafaldini (@lucasrafaldini)
 
 ---
 
-**Versão:** 1.0
+**Versão:** 2.0
 **Status:** Production Ready
-**Última Atualização:** 28 de Outubro de 2025
+**Última Atualização:** Abril de 2026
 
-**Nota**: Sistema completo com interface web, histórico de 7 dias, CRUD de colaboradores e preservação inteligente de dados históricos.
+**Nota**: Sistema completo com interface web, histórico de 7 dias, CRUD de colaboradores, preservação inteligente de dados históricos e identificação de dispositivos via OUIja (base IEEE oficial).
