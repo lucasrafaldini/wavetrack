@@ -9,7 +9,19 @@ permissions:
 
 jobs:
   release:
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        include:
+          - goos: linux
+            goarch: amd64
+            os: ubuntu-latest
+          - goos: darwin
+            goarch: arm64
+            os: macos-latest
+          - goos: darwin
+            goarch: amd64
+            os: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -18,38 +30,40 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install build dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libpcap-dev
+      - name: Install libpcap (Linux)
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
 
-      - name: Run tests
+      - name: Run tests (Linux)
+        if: runner.os == 'Linux'
         run: go test -race ./...
 
-      - name: Build Linux (amd64)
-        run: |
-          GOOS=linux GOARCH=amd64 go build \
-            -ldflags="-s -w" \
-            -o dist/wavetrack-linux-amd64 \
-            ./cmd/wavetrack
-
-      - name: Build macOS (arm64)
+      - name: Build
         env:
-          CGO_ENABLED: 0
+          GOOS: ${{ matrix.goos }}
+          GOARCH: ${{ matrix.goarch }}
+          CGO_ENABLED: 1
         run: |
-          GOOS=darwin GOARCH=arm64 go build \
-            -ldflags="-s -w" \
-            -o dist/wavetrack-darwin-arm64 \
-            ./cmd/wavetrack
+          mkdir -p dist
+          go build -ldflags="-s -w" -o dist/wavetrack-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/wavetrack
 
-      - name: Build macOS (amd64)
-        env:
-          CGO_ENABLED: 0
-        run: |
-          GOOS=darwin GOARCH=amd64 go build \
-            -ldflags="-s -w" \
-            -o dist/wavetrack-darwin-amd64 \
-            ./cmd/wavetrack
+      - name: Upload binary
+        uses: actions/upload-artifact@v4
+        with:
+          name: wavetrack-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: dist/wavetrack-${{ matrix.goos }}-${{ matrix.goarch }}
+
+  publish:
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - name: Download binaries
+        uses: actions/download-artifact@v4
+        with:
+          path: dist
+          merge-multiple: true
 
       - name: Create checksums
         run: |

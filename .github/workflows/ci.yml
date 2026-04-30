@@ -99,17 +99,20 @@ jobs:
 
   build:
     name: Build
-    runs-on: ubuntu-latest
+    runs-on: ${{ matrix.os }}
     needs: [lint, test]
     strategy:
       matrix:
         include:
           - goos: linux
             goarch: amd64
+            os: ubuntu-latest
           - goos: darwin
             goarch: arm64
+            os: macos-latest
           - goos: darwin
             goarch: amd64
+            os: macos-latest
     steps:
       - uses: actions/checkout@v4
 
@@ -118,7 +121,8 @@ jobs:
         with:
           go-version-file: go.mod
 
-      - name: Install libpcap
+      - name: Install libpcap (Linux)
+        if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libpcap-dev
 
       - name: Build
