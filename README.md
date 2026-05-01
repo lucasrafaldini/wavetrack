@@ -1,55 +1,57 @@
 # WaveTrack
 
-Sistema de monitoramento de presença baseado em detecção de dispositivos Wi-Fi. O WaveTrack captura handshakes de dispositivos em uma rede Wi-Fi para registrar automaticamente a presença de funcionários.
+*Read this in other languages: [Português](README.pt-BR.md)*
+
+Presence monitoring system based on Wi-Fi device detection. WaveTrack captures device handshakes on a Wi-Fi network to automatically record employee presence.
 
 > **[Quick Start Guide](.github/docs/QUICKSTART.md)** | [Design Document](.github/docs/SDD.md) | [Deploy Guide](.github/docs/DEPLOY.md) | [Contributing](.github/docs/CONTRIBUTING.md) | [Changelog](.github/docs/CHANGELOG.md)
 
-## Funcionalidades
+## Features
 
-### Sistema de Monitoramento
-- **Monitoramento Wi-Fi**: Captura pacotes de gerenciamento Wi-Fi para detectar dispositivos próximos
-- **Registro de Presença**: Associa dispositivos (MACs) a funcionários cadastrados
-- **Eventos Automáticos**: Detecta automaticamente chegadas e saídas
-- **Sistema de Logs**: Registra todos os eventos em arquivos JSON com rotação diária
-- **Banco de Dados SQLite**: Histórico permanente de presença para análises e relatórios
+### Monitoring System
+- **Wi-Fi Monitoring**: Captures Wi-Fi management packets to detect nearby devices
+- **Presence Registration**: Associates devices (MACs) with registered employees
+- **Automatic Events**: Automatically detects arrivals and departures
+- **Logging System**: Logs all events in daily rotated JSON files
+- **SQLite Database**: Permanent presence history for analysis and reports
 
-### Interface Web Completa
-- **Dashboard em Tempo Real**: Visualização de dispositivos ativos e suas informações
-- **Sistema de Abas**:
- - **Tempo Real**: Monitore dispositivos conectados no momento
- - **Histórico (7 dias)**: Analise presença dos últimos 7 dias com percentuais
- - **Colaboradores**: Gerencie cadastros de funcionários (criar, editar, deletar)
-- **Cadastro Dinâmico**: Adicione e edite funcionários diretamente pela interface
-- **Ordenação e Filtros**: Organize dados por nome, tempo online, chegada, etc.
+### Complete Web Interface
+- **Real-Time Dashboard**: View active devices and their information
+- **Tab System**:
+  - **Real Time**: Monitor currently connected devices
+  - **History (7 days)**: Analyze presence over the last 7 days with percentages
+  - **Employees**: Manage employee registrations (create, edit, delete)
+- **Dynamic Registration**: Add and edit employees directly through the interface
+- **Sorting and Filters**: Organize data by name, online time, arrival time, etc.
 
-### Gestão de Colaboradores
-- **CRUD Completo**: Criar, visualizar, editar e deletar colaboradores
-- **Edição com Preservação de Histórico**:
- - Altere MAC address e todo o histórico é migrado automaticamente
- - Atualize nome e os eventos passados refletem a mudança
- - Edite departamento sem afetar o histórico
-- **Exclusão Inteligente**: Remova colaboradores mantendo 100% do histórico para relatórios
+### Employee Management
+- **Full CRUD**: Create, view, edit, and delete employees
+- **Editing with History Preservation**:
+  - Change MAC address and all history is automatically migrated
+  - Update name and past events reflect the change
+  - Edit department without affecting history
+- **Smart Deletion**: Remove employees while keeping 100% of the history for reports
 
-### Histórico e Relatórios
-- **Histórico de 7 Dias**: Visualize presença diária com:
- - Horário de chegada e saída
- - Total de horas trabalhadas
- - Percentual de presença (base: 8 horas = 100%)
- - Média de presença semanal
-- **Dados Preservados**: Histórico nunca é deletado, mesmo removendo colaboradores
-- **API REST**: Endpoints completos para integração com outros sistemas
+### History and Reports
+- **7-Day History**: View daily presence with:
+  - Arrival and departure times
+  - Total hours worked
+  - Presence percentage (base: 8 hours = 100%)
+  - Weekly presence average
+- **Preserved Data**: History is never deleted, even when removing employees
+- **REST API**: Complete endpoints for integration with other systems
 
-## Requisitos
+## Requirements
 
-### Sistema Operacional
-- **macOS** ou **Linux** com interface Wi-Fi
-- Permissões de administrador (necessário para captura de pacotes)
+### Operating System
+- **macOS** or **Linux** with Wi-Fi interface
+- Administrator privileges (required for packet capture)
 
-### Dependências
-- Go 1.21 ou superior
-- libpcap (para captura de pacotes)
+### Dependencies
+- Go 1.21 or higher
+- libpcap (for packet capture)
 
-#### Instalação do libpcap
+#### libpcap Installation
 
 **macOS:**
 ```bash
@@ -66,69 +68,69 @@ sudo apt-get install libpcap-dev
 sudo dnf install libpcap-devel
 ```
 
-## Instalação
+## Installation
 
-1. **Clone o repositório:**
+1. **Clone the repository:**
 ```bash
 git clone https://github.com/lucasrafaldini/wavetrack.git
 cd wavetrack
 ```
 
-2. **Instale as dependências:**
+2. **Install dependencies:**
 ```bash
 go mod download
 ```
 
-3. **Configure o projeto:**
- - Edite `config.yaml` com suas configurações
- - Ajuste a interface de rede (geralmente `en0` no macOS, `wlan0` no Linux)
- - Funcionários serão cadastrados via interface web após iniciar o sistema
+3. **Configure the project:**
+  - Edit `config.yaml` with your settings
+  - Adjust the network interface (usually `en0` on macOS, `wlan0` on Linux)
+  - Employees will be registered via the web interface after starting the system
 
-4. **Compile o projeto:**
+4. **Build the project:**
 ```bash
 go build -o wavetrack cmd/wavetrack/main.go
 ```
 
-5. **Ajuste permissões do banco de dados (macOS):**
+5. **Adjust database permissions (macOS):**
 
-Se o banco de dados for criado com `sudo`, você precisará ajustar as permissões para permitir acesso sem root:
+If the database is created with `sudo`, you'll need to adjust permissions to allow non-root access:
 
 ```bash
-# Após a primeira execução, ajuste o proprietário do diretório de dados
+# After the first run, adjust the data directory owner
 sudo chown -R $(whoami):staff ./data
 
-# Ou rode o app sem sudo, mas com permissões de captura:
-# (requer configuração adicional do sistema)
+# Or run the app without sudo, but with capture permissions:
+# (requires additional system configuration)
 ```
 
-## Configuração
+## Configuration
 
-Edite o arquivo `config.yaml`:
+Edit the `config.yaml` file:
 
 ```yaml
 network:
- interface: "en0" # Interface de rede Wi-Fi
- channel: 6 # Canal Wi-Fi
- scan_interval: 10 # Intervalo de scan em segundos
+  interface: "en0" # Wi-Fi network interface
+  channel: 6 # Wi-Fi channel
+  scan_interval: 10 # Scan interval in seconds
 
 logging:
- log_dir: "./logs"
- log_level: "info"
+  log_dir: "./logs"
+  log_level: "info"
 
 presence:
- timeout_minutes: 20 # Tempo de inatividade antes de marcar offline (mín. 20 min)
- signal_threshold: -75 # Sinal mínimo em dBm (0 = ignora; usado no modo não-monitor)
+  timeout_minutes: 20 # Inactivity time before marking offline (min. 20 min)
+  signal_threshold: -75 # Minimum signal in dBm (0 = ignore; used in non-monitor mode)
 ```
 
-**Nota**: Funcionários agora são cadastrados via interface web e armazenados no banco de dados SQLite (`data/wavetrack.db`). Não há mais seção de employees no config.yaml.
+**Note**: Employees are now registered via the web interface and stored in the SQLite database (`data/wavetrack.db`). There is no longer an employees section in `config.yaml`.
 
-### Como descobrir o endereço MAC de um dispositivo:
+### How to find a device's MAC address:
 
 **iPhone/iPad:**
-- Configurações → Geral → Sobre → Endereço Wi-Fi
+- Settings → General → About → Wi-Fi Address
 
 **Android:**
-- Configurações → Sobre o telefone → Status → Endereço MAC Wi-Fi
+- Settings → About phone → Status → Wi-Fi MAC address
 
 **Laptop:**
 ```bash
@@ -139,142 +141,142 @@ ifconfig en0 | grep ether
 ip link show wlan0
 ```
 
-## API REST
+## REST API
 
-O WaveTrack expõe uma API REST para integração com outros sistemas:
+WaveTrack exposes a REST API for integration with other systems:
 
-### Endpoints Disponíveis:
+### Available Endpoints:
 
 #### `GET /api/devices`
-Lista todos os dispositivos detectados
+Lists all detected devices
 
-**Resposta:**
+**Response:**
 ```json
 [
- {
- "mac_address": "00:11:22:33:44:55",
- "type": "smartphone",
- "vendor": "Apple",
- "signal_strength": -45,
- "first_seen": "2025-10-28T14:30:00Z",
- "last_seen": "2025-10-28T15:45:00Z",
- "is_active": true,
- "employee_name": "João Silva",
- "department": "TI",
- "first_seen_today": "2025-10-28T08:15:00Z",
- "online_duration_seconds": 14400
- }
+  {
+    "mac_address": "00:11:22:33:44:55",
+    "type": "smartphone",
+    "vendor": "Apple",
+    "signal_strength": -45,
+    "first_seen": "2025-10-28T14:30:00Z",
+    "last_seen": "2025-10-28T15:45:00Z",
+    "is_active": true,
+    "employee_name": "João Silva",
+    "department": "TI",
+    "first_seen_today": "2025-10-28T08:15:00Z",
+    "online_duration_seconds": 14400
+  }
 ]
 ```
 
 #### `GET /api/employees`
-Lista todos os funcionários cadastrados
+Lists all registered employees
 
-**Resposta:**
+**Response:**
 ```json
 [
- {
- "id": 1,
- "mac_address": "00:11:22:33:44:55",
- "name": "João Silva",
- "department": "TI",
- "custom_device_type": "iPhone",
- "custom_vendor": "Apple",
- "created_at": "2025-10-28T10:00:00Z",
- "updated_at": "2025-10-28T10:00:00Z"
- }
+  {
+    "id": 1,
+    "mac_address": "00:11:22:33:44:55",
+    "name": "João Silva",
+    "department": "TI",
+    "custom_device_type": "iPhone",
+    "custom_vendor": "Apple",
+    "created_at": "2025-10-28T10:00:00Z",
+    "updated_at": "2025-10-28T10:00:00Z"
+  }
 ]
 ```
 
 #### `POST /api/associate`
-Cria ou atualiza um funcionário
+Creates or updates an employee
 
-**Requisição (Novo):**
+**Request (New):**
 ```json
 {
- "mac_address": "00:11:22:33:44:55",
- "name": "João Silva",
- "department": "TI",
- "custom_device_type": "iPhone 15 Pro",
- "custom_vendor": "Apple"
+  "mac_address": "00:11:22:33:44:55",
+  "name": "João Silva",
+  "department": "TI",
+  "custom_device_type": "iPhone 15 Pro",
+  "custom_vendor": "Apple"
 }
 ```
 
-**Requisição (Edição com alteração de MAC):**
+**Request (Edit with MAC change):**
 ```json
 {
- "mac_address": "00:11:22:33:44:66",
- "old_mac_address": "00:11:22:33:44:55",
- "name": "João Silva",
- "department": "TI",
- "custom_device_type": "iPhone 15 Pro",
- "custom_vendor": "Apple"
+  "mac_address": "00:11:22:33:44:66",
+  "old_mac_address": "00:11:22:33:44:55",
+  "name": "João Silva",
+  "department": "TI",
+  "custom_device_type": "iPhone 15 Pro",
+  "custom_vendor": "Apple"
 }
 ```
 
-**Resposta:**
+**Response:**
 ```json
 {
- "message": "Funcionário cadastrado com sucesso"
+  "message": "Employee registered successfully"
 }
 ```
 
-**Nota:** Ao alterar o MAC address, todo o histórico de eventos é automaticamente migrado para o novo MAC.
+**Note:** When changing the MAC address, all event history is automatically migrated to the new MAC.
 
 #### `DELETE /api/employees/{mac}`
-Remove um funcionário (preserva histórico)
+Removes an employee (preserves history)
 
-**Exemplo:**
+**Example:**
 ```bash
 curl -X DELETE http://localhost:8080/api/employees/00:11:22:33:44:55
 ```
 
-**Resposta:**
+**Response:**
 ```json
 {
- "message": "Funcionário deletado com sucesso"
+  "message": "Employee deleted successfully"
 }
 ```
 
-**Nota:** O histórico de presença é preservado para relatórios e análises.
+**Note:** The presence history is preserved for reports and analysis.
 
 #### `GET /api/history/7days`
-Retorna histórico de presença dos últimos 7 dias
+Returns presence history for the last 7 days
 
-**Resposta:**
+**Response:**
 ```json
 [
- {
- "date": "2025-10-28",
- "day_of_week": "Segunda",
- "mac_address": "00:11:22:33:44:55",
- "name": "João Silva",
- "department": "TI",
- "arrival": "08:15:23",
- "departure": "18:30:45",
- "total_hours": "10.25",
- "percentage": "128%"
- }
+  {
+    "date": "2025-10-28",
+    "day_of_week": "Monday",
+    "mac_address": "00:11:22:33:44:55",
+    "name": "João Silva",
+    "department": "TI",
+    "arrival": "08:15:23",
+    "departure": "18:30:45",
+    "total_hours": "10.25",
+    "percentage": "128%"
+  }
 ]
 ```
 
 #### `GET /api/stats`
-Retorna estatísticas do sistema
+Returns system statistics
 
-**Resposta:**
+**Response:**
 ```json
 {
- "total_devices": 15,
- "active_devices": 8,
- "total_employees": 5,
- "events_today": 24,
- "offline_threshold_minutes": 20
+  "total_devices": 15,
+  "active_devices": 8,
+  "total_employees": 5,
+  "events_today": 24,
+  "offline_threshold_minutes": 20
 }
 ```
 
-## Uso
+## Usage
 
-**Execute com permissões de administrador:**
+**Run with administrator privileges:**
 
 ```bash
 # macOS
@@ -283,210 +285,210 @@ sudo ./wavetrack
 # Linux
 sudo ./wavetrack
 
-# Com porta customizada para o servidor web (padrão: 8080)
+# With a custom port for the web server (default: 8080)
 sudo ./wavetrack -port 3000
 
-# Com arquivo de configuração customizado
-sudo ./wavetrack -config /caminho/para/config.yaml
+# With a custom configuration file
+sudo ./wavetrack -config /path/to/config.yaml
 ```
 
-### Acessando a Interface Web
+### Accessing the Web Interface
 
-Após iniciar o sistema, abra seu navegador e acesse:
+After starting the system, open your browser and access:
 
 ```
 http://localhost:8080
 ```
 
-### Funcionalidades da Interface:
+### Interface Features:
 
-#### 1. **Tempo Real (Tab Principal)**
- - Visualização de todos os dispositivos detectados no momento
- - Status de atividade (Ativo/Inativo) com threshold de 20 minutos
- - Força do sinal em tempo real (N/A em modo não-monitor)
- - Primeira chegada do dia ("Chegou às")
- - Tempo total online no dia atual
- - Estatísticas do sistema em tempo real
+#### 1. **Real Time (Main Tab)**
+  - View all devices detected at the moment
+  - Activity status (Active/Inactive) with a 20-minute threshold
+  - Real-time signal strength (N/A in non-monitor mode)
+  - First arrival of the day ("Arrived at")
+  - Total online time for the current day
+  - Real-time system statistics
 
-#### 2. **Histórico de 7 Dias**
- - Visualização completa dos últimos 7 dias de presença
- - Para cada colaborador e dia:
- - Data e dia da semana
- - Horário de chegada (primeiro arrival)
- - Horário de saída (último departure)
- - Total de horas trabalhadas
- - Percentual de presença (8 horas = 100%)
- - Média semanal de presença por colaborador
- - Dados carregados do banco de dados SQLite
+#### 2. **7-Day History**
+  - Complete view of the last 7 days of presence
+  - For each employee and day:
+    - Date and day of the week
+    - Arrival time (first arrival)
+    - Departure time (last departure)
+    - Total hours worked
+    - Presence percentage (8 hours = 100%)
+    - Weekly presence average per employee
+  - Data loaded from SQLite database
 
-#### 3. **Gerenciamento de Colaboradores**
- - **Listar**: Visualize todos os colaboradores cadastrados
- - **Criar**: Adicione novos colaboradores com nome, MAC, departamento
- - **Editar**: Modifique dados de colaboradores existentes
- - Alterar MAC: Histórico é migrado automaticamente
- - Alterar Nome: Todos os eventos são atualizados
- - Alterar Departamento: Registro atualizado
- - **Deletar**: Remova colaboradores (com confirmação)
- - O colaborador é removido da lista ativa
- - Todo o histórico é preservado para relatórios
+#### 3. **Employee Management**
+  - **List**: View all registered employees
+  - **Create**: Add new employees with name, MAC, department
+  - **Edit**: Modify existing employee data
+    - Change MAC: History is automatically migrated
+    - Change Name: All events are updated
+    - Change Department: Record updated
+  - **Delete**: Remove employees (with confirmation)
+    - Employee is removed from the active list
+    - All history is preserved for reports
 
-#### 4. **Ordenação e Filtros**
- - Ordenar por: Nome do funcionário, Chegou às, Tempo online
- - Filtro: Somente funcionários (oculta dispositivos não cadastrados)
- - Direção: Ascendente ou Descendente
+#### 4. **Sorting and Filters**
+  - Sort by: Employee name, Arrived at, Online time
+  - Filter: Employees only (hides unregistered devices)
+  - Direction: Ascending or Descending
 
-### Saída Esperada (Console):
+### Expected Output (Console):
 ```
-=== WaveTrack - Sistema de Monitoramento de Presença ===
-Configuração carregada: interface=en0, intervalo=10s
-Sistema de armazenamento iniciado
-Sistema de logs iniciado: ./logs/presence_2025-10-28.log
-Scanner iniciado na interface en0
-Monitorando 2 funcionários cadastrados
- Servidor web iniciado em http://localhost:8080
- Acesse o dashboard no navegador!
-Sistema iniciado! Pressione Ctrl+C para parar...
- João Silva chegou (Departamento: TI)
- Maria Santos chegou (Departamento: RH)
+=== WaveTrack - Presence Monitoring System ===
+Configuration loaded: interface=en0, interval=10s
+Storage system started
+Logging system started: ./logs/presence_2025-10-28.log
+Scanner started on interface en0
+Monitoring 2 registered employees
+  Web server started on http://localhost:8080
+  Access the dashboard in the browser!
+System started! Press Ctrl+C to stop...
+  João Silva arrived (Department: TI)
+  Maria Santos arrived (Department: HR)
 ```
 
-## Estrutura do Projeto
+## Project Structure
 
 ```
 wavetrack/
 ├── cmd/
-│ ├── wavetrack/
-│ │ └── main.go # Aplicação principal
-│ └── seed_history/
-│ └── main.go # Gerador de dados históricos (dev)
+│   ├── wavetrack/
+│   │   └── main.go           # Main application
+│   └── seed_history/
+│       └── main.go           # Historical data generator (dev)
 ├── internal/
-│ ├── api/
-│ │ └── handlers.go # Endpoints da API REST
-│ ├── config/
-│ │ └── config.go # Gerenciamento de configuração
-│ ├── deviceid/
-│ │ └── deviceid.go # Identificação de vendor/tipo via OUI
-│ ├── logger/
-│ │ └── logger.go # Sistema de logging
-│ ├── models/
-│ │ └── models.go # Modelos de dados
-│ ├── storage/
-│ │ ├── storage.go # Persistência SQLite
-│ │ ├── schema.sql # Schema do banco
-│ │ └── storage_test.go # Testes de storage
-│ ├── tracker/
-│ │ └── tracker.go # Lógica de rastreamento
-│ └── wifi/
-│ └── scanner.go # Captura de pacotes Wi-Fi
+│   ├── api/
+│   │   └── handlers.go       # REST API endpoints
+│   ├── config/
+│   │   └── config.go         # Configuration management
+│   ├── deviceid/
+│   │   └── deviceid.go       # Vendor/type identification via OUI
+│   ├── logger/
+│   │   └── logger.go         # Logging system
+│   ├── models/
+│   │   └── models.go         # Data models
+│   ├── storage/
+│   │   ├── storage.go        # SQLite persistence
+│   │   ├── schema.sql        # DB schema
+│   │   └── storage_test.go   # Storage tests
+│   ├── tracker/
+│   │   └── tracker.go        # Tracking logic
+│   └── wifi/
+│       └── scanner.go        # Wi-Fi packet capture
 ├── web/
-│ ├── index.html # Interface web (estrutura)
-│ ├── css/
-│ │ └── style.css # Estilos da interface
-│ └── js/
-│ └── app.js # Lógica JavaScript
-├── data/ # Banco SQLite (criado automaticamente)
-│ └── wavetrack.db
-├── logs/ # Arquivos de log (criado automaticamente)
-├── config.yaml # Arquivo de configuração
-├── migrate_preserve_history.sql # Migração do banco (aplicada)
-├── go.mod # Dependências Go
-└── README.md # Este arquivo
+│   ├── index.html            # Web interface (structure)
+│   ├── css/
+│   │   └── style.css         # Interface styles
+│   └── js/
+│       └── app.js            # JavaScript logic
+├── data/                     # SQLite database (created automatically)
+│   └── wavetrack.db
+├── logs/                     # Log files (created automatically)
+├── config.yaml               # Configuration file
+├── migrate_preserve_history.sql # Database migration (applied)
+├── go.mod                    # Go dependencies
+└── README.md                 # This file
 ```
 
-## Formato dos Logs
+## Log Format
 
-Os eventos são salvos em formato JSON rotacionado diariamente (`logs/presence_YYYY-MM-DD.log`):
+Events are saved in JSON format rotated daily (`logs/presence_YYYY-MM-DD.log`):
 
 ```json
 {
- "timestamp": "2025-10-28T14:30:00Z",
- "event_type": "arrival",
- "employee_name": "João Silva",
- "mac_address": "00:11:22:33:44:55",
- "signal_strength": -45,
- "metadata": ""
+  "timestamp": "2025-10-28T14:30:00Z",
+  "event_type": "arrival",
+  "employee_name": "João Silva",
+  "mac_address": "00:11:22:33:44:55",
+  "signal_strength": -45,
+  "metadata": ""
 }
 ```
 
-**Tipos de eventos:**
-- `arrival`: Funcionário chegou
-- `departure`: Funcionário saiu
-- `unknown_device`: Dispositivo desconhecido detectado
+**Event types:**
+- `arrival`: Employee arrived
+- `departure`: Employee left
+- `unknown_device`: Unknown device detected
 
-## Considerações Importantes
+## Important Considerations
 
-1. **Permissões**: O programa precisa rodar como root/sudo para capturar pacotes
-2. **Permissões de Banco (macOS)**: Se o banco SQLite for criado com sudo, ajuste o proprietário com `sudo chown -R $(whoami):staff ./data` após a primeira execução
-3. **Modo Monitor vs. Compatibilidade**: No macOS, o scanner usa modo ARP/Ethernet compatível quando 802.11 não está disponível. Força de sinal (RSSI) não é capturada nesse modo
-4. **Privacidade**: Este sistema captura endereços MAC. Certifique-se de estar em conformidade com as leis locais de privacidade (LGPD, GDPR, etc.)
-5. **Alcance**: A detecção depende do alcance do sinal Wi-Fi (tipicamente 10-50 metros)
-6. **Threshold Offline**: Dispositivos são marcados como offline após 20 minutos de inatividade (configurável em `presence.timeout_minutes`, com mínimo de 20 minutos)
-7. **Histórico Preservado**: Ao deletar um colaborador, todo o histórico de presença é mantido no banco para fins de relatórios e auditoria
-8. **Migração de Dados**: Ao editar o MAC de um colaborador, todo o histórico é automaticamente migrado para o novo MAC
+1. **Permissions**: The program must run as root/sudo to capture packets
+2. **Database Permissions (macOS)**: If the SQLite DB is created with sudo, adjust the owner with `sudo chown -R $(whoami):staff ./data` after the first run
+3. **Monitor Mode vs Compatibility**: On macOS, the scanner uses a compatible ARP/Ethernet mode when 802.11 is not available. Signal strength (RSSI) is not captured in this mode
+4. **Privacy**: This system captures MAC addresses. Make sure you comply with local privacy laws (LGPD, GDPR, etc.)
+5. **Range**: Detection depends on the Wi-Fi signal range (typically 10-50 meters)
+6. **Offline Threshold**: Devices are marked offline after 20 minutes of inactivity (configurable in `presence.timeout_minutes`, minimum 20 minutes)
+7. **Preserved History**: When deleting an employee, all presence history is kept in the database for reporting and auditing purposes
+8. **Data Migration**: When editing an employee's MAC, all history is automatically migrated to the new MAC
 
-## Documentação
+## Documentation
 
-- **[SDD.md](.github/docs/SDD.md)** - Software Design Document (arquitetura, componentes, decisões de design)
-- **[QUICKSTART.md](.github/docs/QUICKSTART.md)** - Guia rápido de início
-- **[DEPLOY.md](.github/docs/DEPLOY.md)** - Guia de deployment
-- **[CONTRIBUTING.md](.github/docs/CONTRIBUTING.md)** - Como contribuir com o projeto
-- **[CHANGELOG.md](.github/docs/CHANGELOG.md)** - Histórico de mudanças
-- **[ROADMAP.md](.github/docs/ROADMAP.md)** - Roadmap de desenvolvimento
+- **[SDD.md](.github/docs/SDD.md)** - Software Design Document (architecture, components, design decisions)
+- **[QUICKSTART.md](.github/docs/QUICKSTART.md)** - Quick start guide
+- **[DEPLOY.md](.github/docs/DEPLOY.md)** - Deployment guide
+- **[CONTRIBUTING.md](.github/docs/CONTRIBUTING.md)** - How to contribute to the project
+- **[CHANGELOG.md](.github/docs/CHANGELOG.md)** - Change history
+- **[ROADMAP.md](.github/docs/ROADMAP.md)** - Development roadmap
 
 ## Roadmap
 
-### Implementado (v1.0)
-- [x] Interface web para visualização em tempo real
-- [x] Dashboard para gerentes com sistema de abas
-- [x] Cadastro dinâmico de funcionários via web (CRUD completo)
-- [x] API REST para integração
-- [x] Banco de dados SQLite para histórico de presença
-- [x] Cálculo de tempo online e primeira chegada do dia
-- [x] Ordenação e filtro de dispositivos no dashboard
-- [x] Histórico de 7 dias com percentuais de presença
-- [x] Edição de colaboradores com migração automática de histórico
-- [x] Preservação de histórico ao deletar colaboradores
-- [x] Sistema de abas (Tempo Real, Histórico, Colaboradores)
-- [x] Organização de código (HTML, CSS, JS separados)
+### Implemented (v1.0)
+- [x] Web interface for real-time visualization
+- [x] Manager dashboard with tab system
+- [x] Dynamic employee registration via web (full CRUD)
+- [x] REST API for integration
+- [x] SQLite database for presence history
+- [x] Online time and first arrival of the day calculation
+- [x] Device sorting and filtering on the dashboard
+- [x] 7-day history with presence percentages
+- [x] Employee editing with automatic history migration
+- [x] History preservation when deleting employees
+- [x] Tab system (Real Time, History, Employees)
+- [x] Code organization (separated HTML, CSS, JS)
 
-### Implementado (v2.0)
-- [x] **Integração com OUIja** - Biblioteca própria para consulta MAC Address
-  - Base IEEE oficial via Wireshark (38k+ OUIs)
-  - Cache inteligente em memória com sync.RWMutex
-  - Atualização automática da base (TTL de 7 dias)
+### Implemented (v2.0)
+- [x] **Integration with OUIja** - Custom library for MAC Address lookup
+  - Official IEEE database via Wireshark (38k+ OUIs)
+  - Smart in-memory cache with sync.RWMutex
+  - Automatic database update (7-day TTL)
   - API endpoints: vendor details, search, top vendors, stats
-- [x] **Remoção da base OUI hardcoded** - Substituída pelo OUIja
-- [x] **CI/CD com GitHub Actions** - Lint, testes com coverage, benchmark, build matrix
-- [x] **Endpoints OUIja na API REST** - `/api/vendor/details`, `/search`, `/top`, `/stats`
+- [x] **Removal of hardcoded OUI database** - Replaced by OUIja
+- [x] **CI/CD with GitHub Actions** - Lint, tests with coverage, benchmark, build matrix
+- [x] **OUIja Endpoints in REST API** - `/api/vendor/details`, `/search`, `/top`, `/stats`
 
-### Próximas Funcionalidades
+### Upcoming Features
 
-#### v2.1 - Interface e UX
-- [ ] Interface web responsiva (mobile-first)
-- [ ] Dashboard em tempo real aprimorado com gráficos interativos
-- [ ] Sistema de notificações push
+#### v2.1 - Interface and UX
+- [ ] Responsive web interface (mobile-first)
+- [ ] Enhanced real-time dashboard with interactive charts
+- [ ] Push notification system
 
-#### v2.2 - Recursos Empresariais
-- [ ] Relatório diário de presença (PDF/CSV)
-- [ ] Notificações por webhook (email/Slack)
-- [ ] Suporte a múltiplos dispositivos por funcionário
-- [ ] Autenticação e controle de acesso
-- [ ] Integração com sistemas de RH
+#### v2.2 - Enterprise Features
+- [ ] Daily presence report (PDF/CSV)
+- [ ] Webhook notifications (email/Slack)
+- [ ] Support for multiple devices per employee
+- [ ] Authentication and access control
+- [ ] HR systems integration
 
-> **Roadmap Completo**: Veja o [ROADMAP.md](.github/docs/ROADMAP.md) para detalhes técnicos e cronograma completo
+> **Full Roadmap**: See [ROADMAP.md](.github/docs/ROADMAP.md) for technical details and the full schedule
 
-## Licença
+## License
 
 MIT License
 
-## Autor
+## Author
 
 Lucas Rafaldini (@lucasrafaldini)
 
 ---
 
-**Versão:** 2.0
-**Status:** Production Ready
-**Última Atualização:** Abril de 2026
+**Version:** 2.0  
+**Status:** Production Ready  
+**Last Updated:** April 2026  
 
-**Nota**: Sistema completo com interface web, histórico de 7 dias, CRUD de colaboradores, preservação inteligente de dados históricos e identificação de dispositivos via OUIja (base IEEE oficial).
+**Note**: Full system with web interface, 7-day history, employee CRUD, smart historical data preservation, and device identification via OUIja (official IEEE database).
