@@ -1,223 +1,452 @@
+// WaveTrack shows who is in the office by noticing their phones on the Wi-Fi.
 package main
 
 import (
+	"context"
+	"errors"
 	"flag"
 	"fmt"
-	"log"
+	"log/slog"
 	"net"
 	"net/http"
 	"os"
 	"os/signal"
+	"path/filepath"
+	"runtime"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/lucasrafaldini/wavetrack/internal/api"
+	"github.com/google/gopacket/pcap"
+
+	"github.com/lucasrafaldini/wavetrack/internal/capture"
 	"github.com/lucasrafaldini/wavetrack/internal/config"
-	"github.com/lucasrafaldini/wavetrack/internal/logger"
-	"github.com/lucasrafaldini/wavetrack/internal/storage"
-	"github.com/lucasrafaldini/wavetrack/internal/tracker"
-	"github.com/lucasrafaldini/wavetrack/internal/wifi"
+	"github.com/lucasrafaldini/wavetrack/internal/demo"
+	"github.com/lucasrafaldini/wavetrack/internal/importer"
+	"github.com/lucasrafaldini/wavetrack/internal/netinfo"
+	"github.com/lucasrafaldini/wavetrack/internal/oui"
+	"github.com/lucasrafaldini/wavetrack/internal/presence"
+	"github.com/lucasrafaldini/wavetrack/internal/server"
+	"github.com/lucasrafaldini/wavetrack/internal/store"
+	"github.com/lucasrafaldini/wavetrack/web"
 )
 
-// detectActiveInterface tenta detectar automaticamente a interface de rede WiFi ativa
-func detectActiveInterface() string {
-	log.Println(" Detectando interface de rede ativa...")
+var version = "3.0.0-dev"
 
-	interfaces, err := net.Interfaces()
-	if err != nil {
-		log.Printf(" Erro ao listar interfaces: %v", err)
-		return ""
-	}
+const usage = `WaveTrack %s: see who's in, from the phones on your Wi-Fi.
 
-	// Lista de prefixos comuns para interfaces WiFi
-	wifiPrefixes := []string{"wlan", "wlp", "wlx", "en0", "en1", "wifi"}
+Usage:
+  wavetrack [serve] [flags]     run the tracker and dashboard
+  wavetrack serve --demo        try it with a simulated office, no setup needed
+  wavetrack interfaces          list network interfaces that can be captured
+  wavetrack doctor              check capture permissions and configuration
+  wavetrack token reset         issue a new admin access token
+  wavetrack import-v2 <db>      import people and history from WaveTrack 2.x
+  wavetrack version
 
-	var activeInterfaces []string
-	for _, iface := range interfaces {
-		// Verifica se a interface está UP e RUNNING
-		if iface.Flags&net.FlagUp == 0 || iface.Flags&net.FlagRunning == 0 {
-			continue
-		}
-
-		// Ignora loopback
-		if iface.Flags&net.FlagLoopback != 0 {
-			continue
-		}
-
-		name := iface.Name
-		log.Printf(" Interface ativa encontrada: %s (flags: %v)", name, iface.Flags)
-
-		// Verifica se é uma interface WiFi comum
-		isWifi := false
-		for _, prefix := range wifiPrefixes {
-			if strings.HasPrefix(strings.ToLower(name), prefix) {
-				isWifi = true
-				break
-			}
-		}
-
-		if isWifi {
-			log.Printf(" Interface WiFi detectada: %s", name)
-			activeInterfaces = append(activeInterfaces, name)
-		}
-	}
-
-	if len(activeInterfaces) > 0 {
-		selected := activeInterfaces[0]
-		log.Printf(" Interface selecionada: %s", selected)
-		return selected
-	}
-
-	log.Println(" Nenhuma interface WiFi ativa detectada")
-	return ""
-}
+Flags for serve:
+`
 
 func main() {
-	// Flags de linha de comando
-	configPath := flag.String("config", "config.yaml", "Caminho para o arquivo de configuração")
-	port := flag.Int("port", 8080, "Porta do servidor web")
-	flag.Parse()
-
-	log.Println("=== WaveTrack - Sistema de Monitoramento de Presença ===")
-
-	// Carrega configuração
-	cfg, err := config.LoadConfig(*configPath)
-	if err != nil {
-		log.Fatalf("Erro ao carregar configuração: %v", err)
+	args := os.Args[1:]
+	command := "serve"
+	if len(args) > 0 && !strings.HasPrefix(args[0], "-") {
+		command, args = args[0], args[1:]
 	}
 
-	// Detecta interface de rede automaticamente
-	detectedInterface := detectActiveInterface()
-	if detectedInterface != "" {
-		log.Printf(" Interface detectada automaticamente: %s (config tinha: %s)",
-			detectedInterface, cfg.Network.Interface)
-		cfg.Network.Interface = detectedInterface
+	var err error
+	switch command {
+	case "serve":
+		err = serve(args)
+	case "interfaces":
+		err = listInterfaces(len(args) > 0 && args[0] == "--all")
+	case "doctor":
+		err = doctor(args)
+	case "token":
+		err = token(args)
+	case "import-v2":
+		err = importV2(args)
+	case "version", "--version":
+		fmt.Println("wavetrack", version)
+	case "help", "-h", "--help":
+		fmt.Printf(usage, version)
+		serveFlags(new(serveOptions)).PrintDefaults()
+	default:
+		err = fmt.Errorf("unknown command %q; run `wavetrack help`", command)
+	}
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "wavetrack:", err)
+		os.Exit(1)
+	}
+}
+
+type serveOptions struct {
+	config, iface, listen, data string
+	demo, monitor               bool
+}
+
+func serveFlags(o *serveOptions) *flag.FlagSet {
+	fs := flag.NewFlagSet("serve", flag.ContinueOnError)
+	fs.StringVar(&o.config, "config", "config.yaml", "configuration file")
+	fs.StringVar(&o.iface, "interface", "", "network interface to capture (overrides config)")
+	fs.StringVar(&o.listen, "listen", "", "address for the dashboard, e.g. :8080 (overrides config)")
+	fs.StringVar(&o.data, "data", "", "data directory (overrides config)")
+	fs.BoolVar(&o.demo, "demo", false, "simulate an office instead of capturing")
+	fs.BoolVar(&o.monitor, "monitor", false, "capture 802.11 frames in monitor mode (overrides config)")
+	return fs
+}
+
+func loadConfig(o serveOptions) (config.Config, error) {
+	cfg, err := config.Load(o.config)
+	if err != nil {
+		return cfg, err
+	}
+	if o.iface != "" {
+		cfg.Capture.Interface = o.iface
+	}
+	if o.listen != "" {
+		cfg.Listen = o.listen
+	}
+	if o.data != "" {
+		cfg.DataDir = o.data
+	}
+	if o.monitor {
+		cfg.Capture.MonitorMode = true
+	}
+	return cfg, cfg.Validate()
+}
+
+func serve(args []string) error {
+	var o serveOptions
+	if err := serveFlags(&o).Parse(args); err != nil {
+		return err
+	}
+	cfg, err := loadConfig(o)
+	if err != nil {
+		return err
+	}
+	logger := slog.New(slog.NewTextHandler(os.Stderr, &slog.HandlerOptions{Level: slog.LevelInfo}))
+	slog.SetDefault(logger)
+
+	clock := time.Now
+	if o.demo {
+		if o.data == "" {
+			dir, err := os.MkdirTemp("", "wavetrack-demo-")
+			if err != nil {
+				return err
+			}
+			defer os.RemoveAll(dir)
+			cfg.DataDir = dir
+		}
+		clock = demo.Clock(time.Now)
+	}
+
+	st, err := store.Open(cfg.DataDir)
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+
+	var ident presence.Identifier = oui.Default()
+	var source capture.Source
+	if o.demo {
+		ident = demo.Identifier{Fallback: ident}
+		if people, _ := st.People(true); len(people) == 0 {
+			if err := demo.Seed(st, clock(), 14); err != nil {
+				return fmt.Errorf("seeding demo: %w", err)
+			}
+		}
+		source = demo.NewSource(clock)
 	} else {
-		log.Printf(" Detecção automática falhou, usando interface do config: %s",
-			cfg.Network.Interface)
-	}
-
-	log.Printf("Configuração final: interface=%s, intervalo=%ds",
-		cfg.Network.Interface, cfg.Network.ScanInterval)
-
-	// Inicializa o storage (SQLite)
-	dataStorage, err := storage.NewStorage("./data")
-	if err != nil {
-		log.Fatalf("Erro ao inicializar storage: %v", err)
-	}
-	defer func() {
-		if err := dataStorage.Close(); err != nil {
-			log.Printf("Erro ao fechar storage: %v", err)
+		candidates, _ := netinfo.Interfaces()
+		iface, err := netinfo.Choose(cfg.Capture.Interface, candidates)
+		if err != nil {
+			return err
 		}
-	}()
-	log.Println("Sistema de armazenamento iniciado (SQLite)")
-
-	// Inicializa o logger de eventos
-	eventLogger, err := logger.NewEventLogger(cfg.Logging.LogDir)
-	if err != nil {
-		log.Fatalf("Erro ao inicializar logger: %v", err)
-	}
-	defer func() {
-		if err := eventLogger.Close(); err != nil {
-			log.Printf("Erro ao fechar logger: %v", err)
+		live, err := capture.OpenLive(iface, cfg.Capture.MonitorMode)
+		if err != nil {
+			return err
 		}
-	}()
-	log.Printf("Sistema de logs iniciado: %s", eventLogger.GetLogPath())
-
-	// Inicializa o scanner Wi-Fi
-	scanner := wifi.NewScanner(cfg.Network.Interface)
-	if err := scanner.Start(); err != nil {
-		log.Fatalf("Erro ao iniciar scanner: %v", err)
+		source = live
 	}
-	defer scanner.Stop()
+	defer source.Close()
 
-	// Inicializa o tracker de presença
-	presenceTracker := tracker.NewPresenceTracker(cfg, scanner, eventLogger, dataStorage)
-	presenceTracker.Start()
+	tracker := presence.New(st, ident, presence.Options{
+		AwayAfter: cfg.Presence.AwayAfter.Duration,
+		MinSignal: cfg.Presence.MinSignal,
+		Logger:    logger,
+		Clock:     clock,
+	})
+	if err := tracker.Start(clock()); err != nil {
+		return err
+	}
 
-	// Inicia scheduler de limpeza automática
-	go startCleanupScheduler(dataStorage)
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	go tracker.Run(ctx, source)
+	go retention(ctx, st, cfg.Privacy.RetentionDays, clock, logger)
 
-	// Inicializa o servidor web
-	apiServer := api.NewServer(dataStorage, cfg)
+	_, port, _ := net.SplitHostPort(cfg.Listen)
+	if port == "" {
+		port = "8080"
+	}
+	desc := source.Describe()
+	srv := server.New(server.Options{
+		Store: st, Tracker: tracker, Ident: ident, Capture: desc, Assets: web.FS,
+		Clock: clock, AwayAfter: cfg.Presence.AwayAfter.Duration,
+		LookupMAC:  netinfo.MACForIP,
+		InviteBase: inviteBase(cfg.PublicURL, desc.Interface, port),
+		Version:    version, Logger: logger,
+	})
+
+	listener, err := net.Listen("tcp", cfg.Listen)
+	if err != nil {
+		return fmt.Errorf("can't listen on %s: %w", cfg.Listen, err)
+	}
+	httpServer := &http.Server{Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
 	go func() {
-		addr := fmt.Sprintf("0.0.0.0:%d", *port)
-		log.Printf(" Servidor web iniciado em http://0.0.0.0%s", addr[7:])
-		log.Println(" Acesse o dashboard no navegador!")
-		log.Println(" Dispositivos na rede podem acessar via IP local")
-		if err := http.ListenAndServe(addr, apiServer.SetupRoutes()); err != nil {
-			log.Fatalf("Erro ao iniciar servidor web: %v", err)
+		if err := httpServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+			logger.Error("dashboard stopped", "err", err)
+			stop()
 		}
 	}()
 
-	log.Println("Sistema iniciado! Pressione Ctrl+C para parar...")
+	announce(st, desc, port, o.demo, logger)
 
-	// Aguarda sinal de interrupção
-	sigChan := make(chan os.Signal, 1)
-	signal.Notify(sigChan, syscall.SIGINT, syscall.SIGTERM)
-	<-sigChan
-
-	log.Println("\nEncerrando WaveTrack...")
-	log.Println("Sistema finalizado com sucesso!")
+	<-ctx.Done()
+	logger.Info("shutting down")
+	shutdownCtx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	_ = httpServer.Shutdown(shutdownCtx)
+	tracker.Flush()
+	return nil
 }
 
-// startCleanupScheduler inicia o agendador de limpeza automática
-func startCleanupScheduler(storage *storage.Storage) {
-	// Executa limpeza a cada 24 horas
-	ticker := time.NewTicker(24 * time.Hour)
+func announce(st *store.Store, desc capture.Description, port string, isDemo bool, logger *slog.Logger) {
+	what := "capturing on " + desc.Interface + " (" + desc.Mode + " mode)"
+	if isDemo {
+		what = "running a simulated office"
+	}
+	url := "http://localhost:" + port
+	fmt.Fprintf(os.Stderr, "\n  WaveTrack %s · %s\n  Dashboard: %s\n", version, what, url)
+
+	token, err := server.EnsureAdminToken(st)
+	switch {
+	case err != nil:
+		logger.Error("admin token", "err", err)
+	case token != "":
+		fmt.Fprintf(os.Stderr, "\n  Your admin access token (shown once, keep it safe):\n    %s\n  Or open %s/#token=%s to sign in directly.\n\n", token, url, token)
+	default:
+		fmt.Fprintf(os.Stderr, "  Sign in with your admin token. Lost it? Run `wavetrack token reset`.\n\n")
+	}
+}
+
+// inviteBase builds the address phones use to open invite links. A browser on the
+// WaveTrack machine itself says "localhost", which a phone can't reach, so use the LAN address.
+func inviteBase(publicURL, iface, port string) func(*http.Request) string {
+	return func(r *http.Request) string {
+		if publicURL != "" {
+			return strings.TrimRight(publicURL, "/")
+		}
+		host, _, err := net.SplitHostPort(r.Host)
+		if err != nil {
+			host = r.Host
+		}
+		if ip := net.ParseIP(host); host != "localhost" && (ip == nil || !ip.IsLoopback()) {
+			return "http://" + r.Host
+		}
+		if ip := netinfo.IPv4(iface); ip != "" {
+			return "http://" + ip + ":" + port
+		}
+		if list, err := netinfo.Interfaces(); err == nil {
+			for _, c := range list {
+				if c.Up && c.IPv4 != "" {
+					return "http://" + c.IPv4 + ":" + port
+				}
+			}
+		}
+		return "http://" + r.Host
+	}
+}
+
+func retention(ctx context.Context, st *store.Store, days int, clock func() time.Time, logger *slog.Logger) {
+	if days == 0 {
+		return
+	}
+	ticker := time.NewTicker(6 * time.Hour)
 	defer ticker.Stop()
-
-	// Executa limpeza inicial após 1 hora de funcionamento
-	time.Sleep(1 * time.Hour)
-	runCleanup(storage)
-
-	// Loop principal do scheduler
-	for range ticker.C {
-		runCleanup(storage)
+	for {
+		cutoff := clock().AddDate(0, 0, -days)
+		if n, err := st.PurgeVisitsBefore(cutoff); err != nil {
+			logger.Error("retention", "err", err)
+		} else if n > 0 {
+			logger.Info("retention", "deleted_visits", n, "older_than", cutoff.Format(time.DateOnly))
+		}
+		select {
+		case <-ctx.Done():
+			return
+		case <-ticker.C:
+		}
 	}
 }
 
-// runCleanup executa a limpeza de dispositivos e eventos antigos
-func runCleanup(storage *storage.Storage) {
-	log.Println(" Iniciando limpeza automática...")
-
-	// 1. Conta dispositivos não cadastrados antes da limpeza
-	totalBefore, inactiveBefore, err := storage.GetUnregisteredDevicesCount()
+func listInterfaces(all bool) error {
+	list, err := netinfo.Interfaces()
 	if err != nil {
-		log.Printf(" Erro ao contar dispositivos: %v", err)
-		return
+		return err
+	}
+	chosen, _ := netinfo.Choose("", list)
+	fmt.Println("Interfaces (the one WaveTrack would pick is marked →):")
+	hidden := 0
+	for _, i := range list {
+		// Hide virtual and unconnected interfaces (bridges, AWDL, Apple's internal links).
+		if !all && !i.Wireless && i.IPv4 == "" {
+			hidden++
+			continue
+		}
+		mark := " "
+		if i.Name == chosen {
+			mark = "→"
+		}
+		kind := "wired"
+		if i.Wireless {
+			kind = "Wi-Fi"
+		}
+		state := "down"
+		if i.Up {
+			state = "up"
+		}
+		fmt.Printf("  %s %-10s %-6s %-5s %s\n", mark, i.Name, kind, state, i.IPv4)
+	}
+	if hidden > 0 {
+		fmt.Printf("  (%d virtual or unconnected interfaces hidden; --all shows them)\n", hidden)
+	}
+	if chosen == "" {
+		fmt.Println("\nNo connected Wi-Fi interface. If Wi-Fi and wired devices share one network,")
+		fmt.Println("capturing on the wired interface works too: wavetrack --interface <name>")
+	}
+	return nil
+}
+
+func doctor(args []string) error {
+	var o serveOptions
+	if err := serveFlags(&o).Parse(args); err != nil {
+		return err
+	}
+	ok := true
+	check := func(pass bool, label, fix string) {
+		if pass {
+			fmt.Printf("  ✓ %s\n", label)
+			return
+		}
+		ok = false
+		fmt.Printf("  ✗ %s\n      %s\n", label, strings.ReplaceAll(fix, "\n", "\n      "))
 	}
 
-	// 2. Remove dispositivos não cadastrados inativos há mais de 7 dias
-	removedDevices, err := storage.CleanupUnregisteredDevices(7)
+	fmt.Printf("WaveTrack %s on %s/%s\n\n", version, runtime.GOOS, runtime.GOARCH)
+	cfg, err := loadConfig(o)
+	label := "configuration " + o.config
+	if _, statErr := os.Stat(o.config); statErr != nil {
+		label = "configuration: defaults (" + o.config + " not found)"
+	}
+	check(err == nil, label, fmt.Sprint(err))
+
+	fmt.Printf("  ✓ %s\n", pcap.Version())
+
+	list, _ := netinfo.Interfaces()
+	iface, err := netinfo.Choose(cfg.Capture.Interface, list)
+	check(err == nil, "capture interface: "+iface, fmt.Sprint(err))
+
+	if iface != "" {
+		live, err := capture.OpenLive(iface, cfg.Capture.MonitorMode)
+		if err == nil {
+			live.Close()
+		}
+		fix := "Run WaveTrack with sudo, or grant capture permission once:\n"
+		if runtime.GOOS == "darwin" {
+			fix += "brew install --cask wireshark-chmodbpf   (then log out and back in)"
+		} else {
+			exe, _ := os.Executable()
+			fix += "sudo setcap cap_net_raw,cap_net_admin=eip " + exe
+		}
+		if err != nil && !strings.Contains(err.Error(), "permission") {
+			fix = err.Error()
+		}
+		check(err == nil, "permission to capture on "+iface, fix)
+	}
+
+	probe := filepath.Join(cfg.DataDir, ".write-test")
+	err = os.MkdirAll(cfg.DataDir, 0o750)
+	if err == nil {
+		err = os.WriteFile(probe, nil, 0o600)
+		os.Remove(probe)
+	}
+	check(err == nil, "data directory "+cfg.DataDir+" is writable", fmt.Sprint(err))
+
+	if l, err := net.Listen("tcp", cfg.Listen); err == nil {
+		l.Close()
+		check(true, "dashboard address "+cfg.Listen+" is free", "")
+	} else {
+		check(false, "dashboard address "+cfg.Listen+" is free", err.Error()+"\nPick another with --listen or listen: in config.yaml.")
+	}
+
+	if !ok {
+		fmt.Println("\nFix the items marked ✗, then run `wavetrack doctor` again.")
+		os.Exit(1)
+	}
+	fmt.Println("\nAll set. Start with `wavetrack`.")
+	return nil
+}
+
+func token(args []string) error {
+	if len(args) == 0 || args[0] != "reset" {
+		return errors.New("usage: wavetrack token reset [--config file] [--data dir]")
+	}
+	var o serveOptions
+	if err := serveFlags(&o).Parse(args[1:]); err != nil {
+		return err
+	}
+	cfg, err := loadConfig(o)
 	if err != nil {
-		log.Printf(" Erro na limpeza de dispositivos: %v", err)
-		return
+		return err
 	}
-
-	// 3. Remove eventos antigos (mantém últimos 30 dias)
-	removedEvents, err := storage.CleanupOldEvents(30)
+	st, err := store.Open(cfg.DataDir)
 	if err != nil {
-		log.Printf(" Erro na limpeza de eventos: %v", err)
-		return
+		return err
 	}
-
-	// 4. Relatório final
-	totalAfter, inactiveAfter, err := storage.GetUnregisteredDevicesCount()
+	defer st.Close()
+	t, err := server.ResetAdminToken(st)
 	if err != nil {
-		log.Printf(" Erro ao contar dispositivos finais: %v", err)
-		return
+		return err
 	}
+	fmt.Printf("New admin token (every browser was signed out):\n  %s\n", t)
+	return nil
+}
 
-	log.Printf(" Limpeza concluída:")
-	log.Printf(" Dispositivos removidos: %d", removedDevices)
-	log.Printf(" Eventos removidos: %d", removedEvents)
-	log.Printf(" Dispositivos não cadastrados: %d → %d", totalBefore, totalAfter)
-	log.Printf(" Dispositivos inativos: %d → %d", inactiveBefore, inactiveAfter)
-
-	if removedDevices > 0 || removedEvents > 0 {
-		log.Printf(" Base de dados otimizada - removidos %d dispositivos e %d eventos antigos",
-			removedDevices, removedEvents)
+func importV2(args []string) error {
+	if len(args) == 0 {
+		return errors.New("usage: wavetrack import-v2 <path to 2.x wavetrack.db> [--data dir]")
 	}
+	var o serveOptions
+	if err := serveFlags(&o).Parse(args[1:]); err != nil {
+		return err
+	}
+	cfg, err := loadConfig(o)
+	if err != nil {
+		return err
+	}
+	st, err := store.Open(cfg.DataDir)
+	if err != nil {
+		return err
+	}
+	defer st.Close()
+	if people, _ := st.People(true); len(people) > 0 {
+		return fmt.Errorf("%s already has people; import into an empty data directory", cfg.DataDir)
+	}
+	res, err := importer.V2(args[0], st, time.Now())
+	if err != nil {
+		return err
+	}
+	fmt.Printf("Imported %d people and %d visits into %s.\n", res.People, res.Visits, cfg.DataDir)
+	return nil
 }

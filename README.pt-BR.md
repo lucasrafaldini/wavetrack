@@ -1,494 +1,97 @@
 # WaveTrack
 
-*Read this in other languages: [English](README.md)*
+*Leia em [English](README.md).*
 
-Sistema de monitoramento de presença baseado em detecção de dispositivos Wi-Fi. O WaveTrack captura handshakes de dispositivos em uma rede Wi-Fi para registrar automaticamente a presença de funcionários.
+**Veja quem está no escritório pelos celulares no Wi-Fi.** O WaveTrack percebe quando um celular ou notebook cadastrado aparece na rede do escritório e transforma isso em um painel ao vivo, uma linha do tempo do dia e um histórico de presença. As pessoas se cadastram sozinhas com um QR code, nada é instalado no celular delas e nada é rastreado fora da rede do escritório.
 
-> **[Quick Start Guide](.github/docs/QUICKSTART.md)** | [Design Document](.github/docs/SDD.md) | [Deploy Guide](.github/docs/DEPLOY.md) | [Contributing](.github/docs/CONTRIBUTING.md) | [Changelog](.github/docs/CHANGELOG.md)
+![Painel do WaveTrack](docs/screenshots/now.png)
 
-## Funcionalidades
+- **Agora:** quem está, desde quando e há quanto tempo hoje.
+- **Linha do tempo:** cada permanência do dia como uma barra, inclusive o almoço.
+- **Histórico:** horas por pessoa por dia, em 7, 14 ou 30 dias, exportável em CSV.
+- **Pessoas:** cadastro por QR code, vários aparelhos por pessoa, anonimizar ou apagar a pedido.
+- **Por perto:** aparelhos vistos recentemente que não pertencem a ninguém, prontos para atribuir.
+- Um único binário em Go com o painel embutido, SQLite e um modo demo que não exige configuração.
 
-### Sistema de Monitoramento
-- **Monitoramento Wi-Fi**: Captura pacotes de gerenciamento Wi-Fi para detectar dispositivos próximos
-- **Registro de Presença**: Associa dispositivos (MACs) a funcionários cadastrados
-- **Eventos Automáticos**: Detecta automaticamente chegadas e saídas
-- **Sistema de Logs**: Registra todos os eventos em arquivos JSON com rotação diária
-- **Banco de Dados SQLite**: Histórico permanente de presença para análises e relatórios
+## 1. Experimente em um minuto
 
-### Interface Web Completa
-- **Dashboard em Tempo Real**: Visualização de dispositivos ativos e suas informações
-- **Sistema de Abas**:
-  - **Tempo Real**: Monitore dispositivos conectados no momento
-  - **Histórico (7 dias)**: Analise presença dos últimos 7 dias com percentuais
-  - **Colaboradores**: Gerencie cadastros de funcionários (criar, editar, deletar)
-- **Cadastro Dinâmico**: Adicione e edite funcionários diretamente pela interface
-- **Ordenação e Filtros**: Organize dados por nome, tempo online, chegada, etc.
+O demo simula um escritório de doze pessoas com duas semanas de histórico, sem precisar de permissões de captura.
 
-### Gestão de Colaboradores
-- **CRUD Completo**: Criar, visualizar, editar e deletar colaboradores
-- **Edição com Preservação de Histórico**:
-  - Altere MAC address e todo o histórico é migrado automaticamente
-  - Atualize nome e os eventos passados refletem a mudança
-  - Edite departamento sem afetar o histórico
-- **Exclusão Inteligente**: Remova colaboradores mantendo 100% do histórico para relatórios
-
-### Histórico e Relatórios
-- **Histórico de 7 Dias**: Visualize presença diária com:
-  - Horário de chegada e saída
-  - Total de horas trabalhadas
-  - Percentual de presença (base: 8 hours = 100%)
-  - Média de presença semanal
-- **Dados Preservados**: Histórico nunca é deletado, mesmo removendo colaboradores
-- **API REST**: Endpoints completos para integração com outros sistemas
-
-## Requisitos
-
-### Sistema Operacional
-- **macOS** ou **Linux** com interface Wi-Fi
-- Permissões de administrador (necessário para captura de pacotes)
-
-### Dependências
-- Go 1.21 ou superior
-- libpcap (para captura de pacotes)
-
-#### Instalação do libpcap
-
-**macOS:**
-```bash
-brew install libpcap
-```
-
-**Linux (Ubuntu/Debian):**
-```bash
-sudo apt-get install libpcap-dev
-```
-
-**Linux (Fedora/RHEL):**
-```bash
-sudo dnf install libpcap-devel
-```
-
-## Instalação
-
-1. **Clone o repositório:**
 ```bash
 git clone https://github.com/lucasrafaldini/wavetrack.git
 cd wavetrack
+make demo
 ```
 
-2. **Instale as dependências:**
-```bash
-go mod download
-```
+Abra o link que ele imprime. Fora do horário comercial, o relógio do demo vai para as 14h20 para o escritório sempre parecer movimentado.
 
-3. **Configure o projeto:**
-  - Edite `config.yaml` com suas configurações
-  - Ajuste a interface de rede (geralmente `en0` no macOS, `wlan0` no Linux)
-  - Funcionários serão cadastrados via interface web após iniciar o sistema
+## 2. Instalação
 
-4. **Compile o projeto:**
-```bash
-go build -o wavetrack cmd/wavetrack/main.go
-```
-
-5. **Ajuste permissões do banco de dados (macOS):**
-
-Se o banco de dados for criado com `sudo`, você precisará ajustar as permissões para permitir acesso sem root:
+Precisa de Go 1.23+ e libpcap (`sudo apt install libpcap-dev` no Debian/Ubuntu; no macOS já vem com as Command Line Tools do Xcode).
 
 ```bash
-# Após a primeira execução, ajuste o proprietário do diretório de dados
-sudo chown -R $(whoami):staff ./data
-
-# Ou rode o app sem sudo, mas com permissões de captura:
-# (requer configuração adicional do sistema)
+make build    # gera ./wavetrack
 ```
 
-## Configuração
+## 3. Primeira execução
 
-Edite o arquivo `config.yaml`:
+1. **Escolha a interface:** `./wavetrack interfaces` mostra as opções. O WaveTrack escolhe sozinho o Wi-Fi conectado e nunca adivinha uma porta cabeada; se o Wi-Fi e a rede cabeada forem a mesma rede, `--interface en0` também funciona.
+2. **Confira as permissões:** `./wavetrack doctor` verifica tudo e diz exatamente o que fazer. Prefira conceder a permissão uma vez a rodar como root:
+   - **macOS:** `brew install --cask wireshark-chmodbpf` e depois saia e entre na sessão.
+   - **Linux:** `sudo setcap cap_net_raw,cap_net_admin=eip ./wavetrack`
+3. **Inicie e entre:** `./wavetrack`. A primeira execução imprime, uma única vez, o token de administrador (só o hash dele é guardado). Perdeu? `./wavetrack token reset`.
 
-```yaml
-network:
-  interface: "en0" # Interface de rede Wi-Fi
-  channel: 6 # Canal Wi-Fi
-  scan_interval: 10 # Intervalo de scan em segundos
+![Tela de login](docs/screenshots/signin.png)
 
-logging:
-  log_dir: "./logs"
-  log_level: "info"
+## 4. Cadastre as pessoas
 
-presence:
-  timeout_minutes: 20 # Tempo de inatividade antes de marcar offline (mín. 20 min)
-  signal_threshold: -75 # Sinal mínimo em dBm (0 = ignora; usado no modo não-monitor)
-```
+**Opção A, convite por QR (recomendado).** Em **People**, clique em **Invite with QR code**. Cada convite vale para uma pessoa, por 24 horas.
 
-**Nota**: Funcionários agora são cadastrados via interface web e armazenados no banco de dados SQLite (`data/wavetrack.db`). Não há mais seção de employees no config.yaml.
+![Convite por QR](docs/screenshots/invite.png)
 
-### Como descobrir o endereço MAC de um dispositivo:
+A pessoa conecta no Wi-Fi do escritório, escaneia, digita o nome e concorda. O WaveTrack identifica o celular pela própria rede; nunca confia num endereço que o aparelho alega.
 
-**iPhone/iPad:**
-- Configurações → Geral → Sobre → Endereço Wi-Fi
+| Claro | Escuro |
+| --- | --- |
+| ![Página de cadastro](docs/screenshots/join.png) | ![Página de cadastro, escura](docs/screenshots/join-dark.png) |
 
-**Android:**
-- Configurações → Sobre o telefone → Status → Endereço MAC Wi-Fi
+**Opção B, manualmente.** **Add person** recebe nome, equipe e, se quiser, o MAC de um aparelho (no iPhone: *Ajustes › Wi-Fi › ⓘ › Endereço Wi-Fi*).
 
-**Laptop:**
-```bash
-# macOS
-ifconfig en0 | grep ether
+**Opção C, em Por perto.** **Nearby** lista aparelhos vistos que não são de ninguém; escolha uma pessoa no menu para atribuir.
 
-# Linux
-ip link show wlan0
-```
+![Por perto](docs/screenshots/nearby.png)
 
-## API REST
+## 5. No dia a dia
 
-O WaveTrack expõe uma API REST para integração com outros sistemas:
+| Agora | Linha do tempo | Histórico |
+| --- | --- | --- |
+| ![Agora](docs/screenshots/now-dark.png) | ![Linha do tempo](docs/screenshots/timeline.png) | ![Histórico](docs/screenshots/history.png) |
 
-### Endpoints Disponíveis:
+## 6. Privacidade
 
-#### `GET /api/devices`
-Lista todos os dispositivos detectados
+- **Só aparelhos cadastrados vão para o disco.** Os demais ficam um tempo na memória (para a tela Por perto) e nunca são gravados.
+- **O consentimento é registrado** em quem se cadastra sozinho.
+- **Duas formas de remover alguém:** *anonimizar* (troca o nome, esquece os aparelhos, mantém as horas) ou *apagar tudo* (pessoa, aparelhos e visitas), para pedidos sob a LGPD.
 
-**Resposta:**
-```json
-[
-  {
-    "mac_address": "00:11:22:33:44:55",
-    "type": "smartphone",
-    "vendor": "Apple",
-    "signal_strength": -45,
-    "first_seen": "2025-10-28T14:30:00Z",
-    "last_seen": "2025-10-28T15:45:00Z",
-    "is_active": true,
-    "employee_name": "João Silva",
-    "department": "TI",
-    "first_seen_today": "2025-10-28T08:15:00Z",
-    "online_duration_seconds": 14400
-  }
-]
-```
+  ![Removendo uma pessoa](docs/screenshots/remove-person.png)
 
-#### `GET /api/employees`
-Lista todos os funcionários cadastrados
+- **Retenção:** visitas mais antigas que `privacy.retention_days` (365 por padrão) são apagadas automaticamente.
+- **Nada sai do prédio:** sem contas, nuvem ou telemetria.
+- **Painel protegido:** token de administrador, cookies `HttpOnly` e `SameSite=Strict`, bloqueio de requisições de outros sites e CSP estrita.
 
-**Resposta:**
-```json
-[
-  {
-    "id": 1,
-    "mac_address": "00:11:22:33:44:55",
-    "name": "João Silva",
-    "department": "TI",
-    "custom_device_type": "iPhone",
-    "custom_vendor": "Apple",
-    "created_at": "2025-10-28T10:00:00Z",
-    "updated_at": "2025-10-28T10:00:00Z"
-  }
-]
-```
+## 7. Configuração, serviço e API
 
-#### `POST /api/associate`
-Cria ou atualiza um funcionário
+Tudo é opcional: copie [`config.example.yaml`](config.example.yaml) para `config.yaml`. Arquivos prontos para rodar como serviço estão em [`deploy/`](deploy) (systemd sem root no Linux, launchd no macOS). A API e a configuração estão detalhadas no [README em inglês](README.md#7-configuration).
 
-**Requisição (Novo):**
-```json
-{
-  "mac_address": "00:11:22:33:44:55",
-  "name": "João Silva",
-  "department": "TI",
-  "custom_device_type": "iPhone 15 Pro",
-  "custom_vendor": "Apple"
-}
-```
+## 8. Como funciona
 
-**Requisição (Edição com alteração de MAC):**
-```json
-{
-  "mac_address": "00:11:22:33:44:66",
-  "old_mac_address": "00:11:22:33:44:55",
-  "name": "João Silva",
-  "department": "TI",
-  "custom_device_type": "iPhone 15 Pro",
-  "custom_vendor": "Apple"
-}
-```
+Celulares e notebooks se anunciam o tempo todo na rede (ARP, DHCP, descoberta de vizinhos IPv6 e mDNS). O WaveTrack escuta esses pacotes, anota o endereço de hardware de quem enviou e transforma avistamentos em **visitas**: do primeiro avistamento até o último, depois de `away_after` sem nenhum. As decisões de projeto estão em [docs/architecture.md](docs/architecture.md).
 
-**Resposta:**
-```json
-{
-  "message": "Funcionário cadastrado com sucesso"
-}
-```
-
-**Nota:** Ao alterar o MAC address, todo o histórico de eventos é automaticamente migrado para o novo MAC.
-
-#### `DELETE /api/employees/{mac}`
-Remove um funcionário (preserva histórico)
-
-**Exemplo:**
-```bash
-curl -X DELETE http://localhost:8080/api/employees/00:11:22:33:44:55
-```
-
-**Resposta:**
-```json
-{
-  "message": "Funcionário deletado com sucesso"
-}
-```
-
-**Nota:** O histórico de presença é preservado para relatórios e análises.
-
-#### `GET /api/history/7days`
-Retorna histórico de presença dos últimos 7 dias
-
-**Resposta:**
-```json
-[
-  {
-    "date": "2025-10-28",
-    "day_of_week": "Segunda",
-    "mac_address": "00:11:22:33:44:55",
-    "name": "João Silva",
-    "department": "TI",
-    "arrival": "08:15:23",
-    "departure": "18:30:45",
-    "total_hours": "10.25",
-    "percentage": "128%"
-  }
-]
-```
-
-#### `GET /api/stats`
-Retorna estatísticas do sistema
-
-**Resposta:**
-```json
-{
-  "total_devices": 15,
-  "active_devices": 8,
-  "total_employees": 5,
-  "events_today": 24,
-  "offline_threshold_minutes": 20
-}
-```
-
-## Uso
-
-**Execute com permissões de administrador:**
+## 9. Vindo da 2.x
 
 ```bash
-# macOS
-sudo ./wavetrack
-
-# Linux
-sudo ./wavetrack
-
-# Com porta customizada para o servidor web (padrão: 8080)
-sudo ./wavetrack -port 3000
-
-# Com arquivo de configuração customizado
-sudo ./wavetrack -config /caminho/para/config.yaml
+./wavetrack import-v2 data/wavetrack.db --data data-v3
+./wavetrack --data data-v3
 ```
 
-### Acessando a Interface Web
-
-Após iniciar o sistema, abra seu navegador e acesse:
-
-```
-http://localhost:8080
-```
-
-### Funcionalidades da Interface:
-
-#### 1. **Tempo Real (Tab Principal)**
-  - Visualização de todos os dispositivos detectados no momento
-  - Status de atividade (Ativo/Inativo) com threshold de 20 minutos
-  - Força do sinal em tempo real (N/A em modo não-monitor)
-  - Primeira chegada do dia ("Chegou às")
-  - Tempo total online no dia atual
-  - Estatísticas do sistema em tempo real
-
-#### 2. **Histórico de 7 Dias**
-  - Visualização completa dos últimos 7 dias de presença
-  - Para cada colaborador e dia:
-    - Data e dia da semana
-    - Horário de chegada (primeiro arrival)
-    - Horário de saída (último departure)
-    - Total de horas trabalhadas
-    - Percentual de presença (8 horas = 100%)
-    - Média semanal de presença por colaborador
-  - Dados carregados do banco de dados SQLite
-
-#### 3. **Gerenciamento de Colaboradores**
-  - **Listar**: Visualize todos os colaboradores cadastrados
-  - **Criar**: Adicione novos colaboradores com nome, MAC, departamento
-  - **Editar**: Modifique dados de colaboradores existentes
-    - Alterar MAC: Histórico é migrado automaticamente
-    - Alterar Nome: Todos os eventos são atualizados
-    - Alterar Departamento: Registro atualizado
-  - **Deletar**: Remova colaboradores (com confirmação)
-    - O colaborador é removido da lista ativa
-    - Todo o histórico é preservado para relatórios
-
-#### 4. **Ordenação e Filtros**
-  - Ordenar por: Nome do funcionário, Chegou às, Tempo online
-  - Filtro: Somente funcionários (oculta dispositivos não cadastrados)
-  - Direção: Ascendente ou Descendente
-
-### Saída Esperada (Console):
-```
-=== WaveTrack - Sistema de Monitoramento de Presença ===
-Configuração carregada: interface=en0, intervalo=10s
-Sistema de armazenamento iniciado
-Sistema de logs iniciado: ./logs/presence_2025-10-28.log
-Scanner iniciado na interface en0
-Monitorando 2 funcionários cadastrados
-  Servidor web iniciado em http://localhost:8080
-  Acesse o dashboard no navegador!
-Sistema iniciado! Pressione Ctrl+C para parar...
-  João Silva chegou (Departamento: TI)
-  Maria Santos chegou (Departamento: RH)
-```
-
-## Estrutura do Projeto
-
-```
-wavetrack/
-├── cmd/
-│   ├── wavetrack/
-│   │   └── main.go           # Aplicação principal
-│   └── seed_history/
-│       └── main.go           # Gerador de dados históricos (dev)
-├── internal/
-│   ├── api/
-│   │   └── handlers.go       # Endpoints da API REST
-│   ├── config/
-│   │   └── config.go         # Gerenciamento de configuração
-│   ├── deviceid/
-│   │   └── deviceid.go       # Identificação de vendor/tipo via OUI
-│   ├── logger/
-│   │   └── logger.go         # Sistema de logging
-│   ├── models/
-│   │   └── models.go         # Modelos de dados
-│   ├── storage/
-│   │   ├── storage.go        # Persistência SQLite
-│   │   ├── schema.sql        # Schema do banco
-│   │   └── storage_test.go   # Testes de storage
-│   ├── tracker/
-│   │   └── tracker.go        # Lógica de rastreamento
-│   └── wifi/
-│       └── scanner.go        # Captura de pacotes Wi-Fi
-├── web/
-│   ├── index.html            # Interface web (estrutura)
-│   ├── css/
-│   │   └── style.css         # Estilos da interface
-│   └── js/
-│       └── app.js            # Lógica JavaScript
-├── data/                     # Banco SQLite (criado automaticamente)
-│   └── wavetrack.db
-├── logs/                     # Arquivos de log (criado automaticamente)
-├── config.yaml               # Arquivo de configuração
-├── migrate_preserve_history.sql # Migração do banco (aplicada)
-├── go.mod                    # Dependências Go
-└── README.md                 # Este arquivo
-```
-
-## Formato dos Logs
-
-Os eventos são salvos em formato JSON rotacionado diariamente (`logs/presence_YYYY-MM-DD.log`):
-
-```json
-{
-  "timestamp": "2025-10-28T14:30:00Z",
-  "event_type": "arrival",
-  "employee_name": "João Silva",
-  "mac_address": "00:11:22:33:44:55",
-  "signal_strength": -45,
-  "metadata": ""
-}
-```
-
-**Tipos de eventos:**
-- `arrival`: Funcionário chegou
-- `departure`: Funcionário saiu
-- `unknown_device`: Dispositivo desconhecido detectado
-
-## Considerações Importantes
-
-1. **Permissões**: O programa precisa rodar como root/sudo para capturar pacotes
-2. **Permissões de Banco (macOS)**: Se o banco SQLite for criado com sudo, ajuste o proprietário com `sudo chown -R $(whoami):staff ./data` após a primeira execução
-3. **Modo Monitor vs. Compatibilidade**: No macOS, o scanner usa modo ARP/Ethernet compatível quando 802.11 não está disponível. Força de sinal (RSSI) não é capturada nesse modo
-4. **Privacidade**: Este sistema captura endereços MAC. Certifique-se de estar em conformidade com as leis locais de privacidade (LGPD, GDPR, etc.)
-5. **Alcance**: A detecção depende do alcance do sinal Wi-Fi (tipicamente 10-50 metros)
-6. **Threshold Offline**: Dispositivos são marcados como offline após 20 minutos de inatividade (configurável em `presence.timeout_minutes`, com mínimo de 20 minutos)
-7. **Histórico Preservado**: Ao deletar um colaborador, todo o histórico de presença é mantido no banco para fins de relatórios e auditoria
-8. **Migração de Dados**: Ao editar o MAC de um colaborador, todo o histórico é automaticamente migrado para o novo MAC
-
-## Documentação
-
-- **[SDD.md](.github/docs/SDD.md)** - Software Design Document (arquitetura, componentes, decisões de design)
-- **[QUICKSTART.md](.github/docs/QUICKSTART.md)** - Guia rápido de início
-- **[DEPLOY.md](.github/docs/DEPLOY.md)** - Guia de deployment
-- **[CONTRIBUTING.md](.github/docs/CONTRIBUTING.md)** - Como contribuir com o projeto
-- **[CHANGELOG.md](.github/docs/CHANGELOG.md)** - Histórico de mudanças
-- **[ROADMAP.md](.github/docs/ROADMAP.md)** - Roadmap de desenvolvimento
-
-## Roadmap
-
-### Implementado (v1.0)
-- [x] Interface web para visualização em tempo real
-- [x] Dashboard para gerentes com sistema de abas
-- [x] Cadastro dinâmico de funcionários via web (CRUD completo)
-- [x] API REST para integração
-- [x] Banco de dados SQLite para histórico de presença
-- [x] Cálculo de tempo online e primeira chegada do dia
-- [x] Ordenação e filtro de dispositivos no dashboard
-- [x] Histórico de 7 dias com percentuais de presença
-- [x] Edição de colaboradores com migração automática de histórico
-- [x] Preservação de histórico ao deletar colaboradores
-- [x] Sistema de abas (Tempo Real, Histórico, Colaboradores)
-- [x] Organização de código (HTML, CSS, JS separados)
-
-### Implementado (v2.0)
-- [x] **Integração com OUIja** - Biblioteca própria para consulta MAC Address
-  - Base IEEE oficial via Wireshark (38k+ OUIs)
-  - Cache inteligente em memória com sync.RWMutex
-  - Atualização automática da base (TTL de 7 dias)
-  - API endpoints: vendor details, search, top vendors, stats
-- [x] **Remoção da base OUI hardcoded** - Substituída pelo OUIja
-- [x] **CI/CD com GitHub Actions** - Lint, testes com coverage, benchmark, build matrix
-- [x] **Endpoints OUIja na API REST** - `/api/vendor/details`, `/search`, `/top`, `/stats`
-
-### Próximas Funcionalidades
-
-#### v2.1 - Interface e UX
-- [ ] Interface web responsiva (mobile-first)
-- [ ] Dashboard em tempo real aprimorado com gráficos interativos
-- [ ] Sistema de notificações push
-
-#### v2.2 - Recursos Empresariais
-- [ ] Relatório diário de presença (PDF/CSV)
-- [ ] Notificações por webhook (email/Slack)
-- [ ] Suporte a múltiplos dispositivos por funcionário
-- [ ] Autenticação e controle de acesso
-- [ ] Integração com sistemas de RH
-
-> **Roadmap Completo**: Veja o [ROADMAP.md](.github/docs/ROADMAP.md) para detalhes técnicos e cronograma completo
-
-## Licença
-
-MIT License
-
-## Autor
-
-Lucas Rafaldini (@lucasrafaldini)
-
----
-
-**Versão:** 2.0  
-**Status:** Production Ready  
-**Última Atualização:** Abril de 2026  
-
-**Nota**: Sistema completo com interface web, histórico de 7 dias, CRUD de colaboradores, preservação inteligente de dados históricos e identificação de dispositivos via OUIja (base IEEE oficial).
+Licença MIT · Lucas Rafaldini

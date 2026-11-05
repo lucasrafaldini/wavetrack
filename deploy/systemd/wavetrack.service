@@ -1,0 +1,28 @@
+# Runs WaveTrack as an unprivileged user with only the capabilities packet capture needs.
+#
+#   sudo useradd --system --home /var/lib/wavetrack wavetrack
+#   sudo install -m 755 wavetrack /usr/local/bin/
+#   sudo install -D -m 644 config.example.yaml /etc/wavetrack/config.yaml
+#   sudo cp deploy/systemd/wavetrack.service /etc/systemd/system/
+#   sudo systemctl enable --now wavetrack
+#   journalctl -u wavetrack -f        # the first start prints the admin token
+
+[Unit]
+Description=WaveTrack office presence
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+User=wavetrack
+ExecStart=/usr/local/bin/wavetrack serve --config /etc/wavetrack/config.yaml --data /var/lib/wavetrack
+StateDirectory=wavetrack
+Restart=on-failure
+AmbientCapabilities=CAP_NET_RAW CAP_NET_ADMIN
+CapabilityBoundingSet=CAP_NET_RAW CAP_NET_ADMIN
+NoNewPrivileges=true
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+
+[Install]
+WantedBy=multi-user.target

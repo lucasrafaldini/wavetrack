@@ -1,0 +1,36 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Runs WaveTrack at boot as a LaunchDaemon. Reading /dev/bpf needs root unless Wireshark's
+  ChmodBPF is installed, in which case this can run as a LaunchAgent under your user instead.
+
+    sudo install -m 755 wavetrack /usr/local/bin/
+    sudo mkdir -p /usr/local/etc /usr/local/var/wavetrack /usr/local/var/log
+    sudo cp config.example.yaml /usr/local/etc/wavetrack.yaml
+    sudo cp deploy/launchd/com.lucasrafaldini.wavetrack.plist /Library/LaunchDaemons/
+    sudo launchctl bootstrap system /Library/LaunchDaemons/com.lucasrafaldini.wavetrack.plist
+    grep -A2 "admin access token" /usr/local/var/log/wavetrack.log
+-->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.lucasrafaldini.wavetrack</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/usr/local/bin/wavetrack</string>
+    <string>serve</string>
+    <string>--config</string>
+    <string>/usr/local/etc/wavetrack.yaml</string>
+    <string>--data</string>
+    <string>/usr/local/var/wavetrack</string>
+  </array>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>KeepAlive</key>
+  <true/>
+  <key>StandardErrorPath</key>
+  <string>/usr/local/var/log/wavetrack.log</string>
+  <key>StandardOutPath</key>
+  <string>/usr/local/var/log/wavetrack.log</string>
+</dict>
+</plist>

@@ -1,0 +1,32 @@
+# WaveTrack configuration. Copy to config.yaml; every setting is optional.
+
+# Where the dashboard listens. ":8080" accepts connections from the whole network,
+# which phones need to open invite links. Use "127.0.0.1:8080" to keep it on this machine.
+listen: ":8080"
+
+# The address phones use to reach WaveTrack, if it differs from what WaveTrack can work out
+# (for example behind a reverse proxy). Leave empty to detect it.
+public_url: ""
+
+# Database location.
+data_dir: "./data"
+
+capture:
+  # Network interface to watch. Leave empty to use the connected Wi-Fi interface.
+  # Run `wavetrack interfaces` to see the options.
+  interface: ""
+  # Capture raw 802.11 frames, which adds signal strength. Needs an adapter that
+  # supports monitor mode; most built-in Mac and laptop cards don't.
+  monitor_mode: false
+
+presence:
+  # Someone counts as gone after none of their devices is seen for this long.
+  # Phones go quiet to save battery, so stay above 15m.
+  away_after: 20m
+  # In monitor mode, ignore devices weaker than this (dBm). Raise it (e.g. -70) to
+  # ignore people passing outside the office.
+  min_signal_dbm: -85
+
+privacy:
+  # Delete visits older than this many days. 0 keeps them forever.
+  retention_days: 365
