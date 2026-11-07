@@ -1,0 +1,40 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="light dark">
+  <title>Join WaveTrack</title>
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <link rel="stylesheet" href="/assets/app.css">
+  <script type="module" src="/assets/join.js"></script>
+</head>
+<body>
+  <div class="solo">
+    <section class="card panel" id="join">
+      <div class="mark"><svg class="icon"><use href="/assets/icons.svg#logo"/></svg></div>
+      <h1>Join office presence</h1>
+      <p>Register this phone so the office dashboard shows when you’re in.</p>
+      <ul class="facts">
+        <li class="yes"><svg class="icon"><use href="/assets/icons.svg#check"/></svg><span>Your phone’s Wi-Fi address, and when it’s connected to this office network.</span></li>
+        <li class="yes"><svg class="icon"><use href="/assets/icons.svg#check"/></svg><span>Your name and team, as you enter them below.</span></li>
+        <li class="no"><svg class="icon"><use href="/assets/icons.svg#hidden"/></svg><span>Never your location elsewhere, browsing, messages or anything on the phone.</span></li>
+      </ul>
+      <form id="join-form" hidden>
+        <div class="field"><label for="name">Your name</label><input class="input" id="name" autocomplete="name" required maxlength="80"></div>
+        <div class="field"><label for="team">Team <span class="faint">(optional)</span></label><input class="input" id="team" autocomplete="organization-title" maxlength="60"></div>
+        <label class="consent"><input type="checkbox" id="consent" required><span>I agree that my presence at the office is recorded. I can ask for my data to be erased at any time.</span></label>
+        <p class="error" id="error" hidden></p>
+        <button class="button primary" type="submit">Register this phone</button>
+      </form>
+      <p class="error" id="invalid" hidden></p>
+      <p class="note">Make sure you’re on the office Wi-Fi, not mobile data.</p>
+    </section>
+    <section class="card panel done" id="done" hidden>
+      <div class="mark"><svg class="icon"><use href="/assets/icons.svg#check"/></svg></div>
+      <h1 id="done-title">You’re all set</h1>
+      <p>This phone is registered. You’ll show up whenever it’s on the office Wi-Fi. You can close this page.</p>
+    </section>
+  </div>
+</body>
+</html>
