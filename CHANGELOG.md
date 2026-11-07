@@ -26,6 +26,7 @@ A rewrite focused on correctness, privacy and setup. See [docs/architecture.md](
 - `--demo`: a simulated office with two weeks of history.
 - `wavetrack doctor`, `wavetrack interfaces`, `wavetrack token reset` and `wavetrack import-v2`.
 - Capture of IPv6 neighbor discovery and mDNS in addition to ARP and DHCP; optional monitor mode with signal strength.
+- Windows support (Npcap) and release binaries for Linux x64/ARM64, macOS and Windows.
 - systemd and launchd service files; graceful shutdown.
 - Tests for the tracker, reports, store, server, capture, demo and importer; CI on Linux and macOS with an end-to-end demo check.
 

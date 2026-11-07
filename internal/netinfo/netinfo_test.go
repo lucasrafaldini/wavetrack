@@ -40,6 +40,23 @@ func TestParseARP(t *testing.T) {
 	}
 }
 
+func TestWindowsParsers(t *testing.T) {
+	arp := "\r\nInterface: 192.168.1.10 --- 0x12\r\n  Internet Address      Physical Address      Type\r\n  192.168.1.20          3a-01-0c-4f-00-02     dynamic\r\n"
+	if got := parseWindowsARP(arp, "192.168.1.20"); got != "3a:01:0c:4f:00:02" {
+		t.Errorf("arp = %q", got)
+	}
+	if got := parseWindowsARP(arp, "192.168.1.99"); got != "" {
+		t.Errorf("missing entry = %q", got)
+	}
+	netsh := "\r\nThere is 1 interface on the system:\r\n\r\n    Name                   : Wi-Fi\r\n    Description            : Intel(R) Wi-Fi 6 AX201\r\n    State                  : connected\r\n"
+	if got := parseNetshInterfaces(netsh); len(got) != 1 || got[0] != "Wi-Fi" {
+		t.Errorf("netsh = %q", got)
+	}
+	if !looksWireless("Wi-Fi") || !looksWireless("WLAN Wireless") || looksWireless("Ethernet") {
+		t.Error("looksWireless misjudged a Windows name")
+	}
+}
+
 func TestMACForIPRejectsLoopbackAndGarbage(t *testing.T) {
 	for _, ip := range []string{"127.0.0.1", "not-an-ip", "::1"} {
 		if _, err := MACForIP(ip); err == nil {

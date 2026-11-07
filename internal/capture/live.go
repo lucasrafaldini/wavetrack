@@ -3,6 +3,7 @@ package capture
 import (
 	"fmt"
 	"net"
+	"runtime"
 	"strings"
 	"sync"
 	"time"
@@ -31,7 +32,11 @@ type Live struct {
 
 // OpenLive starts capturing on iface. Monitor mode needs an adapter and driver that support it.
 func OpenLive(iface string, monitor bool) (*Live, error) {
-	inactive, err := pcap.NewInactiveHandle(iface)
+	device, err := pcapDevice(iface)
+	if err != nil {
+		return nil, err
+	}
+	inactive, err := pcap.NewInactiveHandle(device)
 	if err != nil {
 		return nil, explain(iface, err)
 	}
@@ -71,8 +76,38 @@ func OpenLive(iface string, monitor bool) (*Live, error) {
 	return l, nil
 }
 
+// pcapDevice maps an interface name to the device libpcap expects. On Windows, Npcap names
+// devices \Device\NPF_{GUID} while the system calls them "Wi-Fi"; match them by address.
+func pcapDevice(iface string) (string, error) {
+	if runtime.GOOS != "windows" || strings.HasPrefix(iface, `\Device\`) {
+		return iface, nil
+	}
+	netIface, err := net.InterfaceByName(iface)
+	if err != nil {
+		return "", fmt.Errorf("no interface named %q: %w", iface, err)
+	}
+	addrs, _ := netIface.Addrs()
+	devices, err := pcap.FindAllDevs()
+	if err != nil {
+		return "", explain(iface, err)
+	}
+	for _, d := range devices {
+		for _, da := range d.Addresses {
+			for _, a := range addrs {
+				if ipnet, ok := a.(*net.IPNet); ok && ipnet.IP.Equal(da.IP) {
+					return d.Name, nil
+				}
+			}
+		}
+	}
+	return "", fmt.Errorf("Npcap doesn't list %q; is the interface connected?", iface)
+}
+
 func explain(iface string, err error) error {
 	msg := strings.ToLower(err.Error())
+	if runtime.GOOS == "windows" && (strings.Contains(msg, "wpcap") || strings.Contains(msg, "dll")) {
+		return fmt.Errorf("packet capture needs Npcap: install it from https://npcap.com with \"WinPcap API-compatible mode\" checked: %w", err)
+	}
 	if strings.Contains(msg, "permission denied") || strings.Contains(msg, "operation not permitted") {
 		return fmt.Errorf("no permission to capture on %s; run `wavetrack doctor` for the one-time setup: %w", iface, err)
 	}

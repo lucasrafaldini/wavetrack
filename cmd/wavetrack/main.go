@@ -363,13 +363,16 @@ func doctor(args []string) error {
 			live.Close()
 		}
 		fix := "Run WaveTrack with sudo, or grant capture permission once:\n"
-		if runtime.GOOS == "darwin" {
+		switch runtime.GOOS {
+		case "darwin":
 			fix += "brew install --cask wireshark-chmodbpf   (then log out and back in)"
-		} else {
+		case "windows":
+			fix = "Install Npcap from https://npcap.com and check \"WinPcap API-compatible mode\",\nor run WaveTrack from an Administrator prompt."
+		default:
 			exe, _ := os.Executable()
 			fix += "sudo setcap cap_net_raw,cap_net_admin=eip " + exe
 		}
-		if err != nil && !strings.Contains(err.Error(), "permission") {
+		if err != nil && !strings.Contains(err.Error(), "permission") && !strings.Contains(err.Error(), "Npcap") {
 			fix = err.Error()
 		}
 		check(err == nil, "permission to capture on "+iface, fix)

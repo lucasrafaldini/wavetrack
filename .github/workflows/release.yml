@@ -8,25 +8,25 @@ permissions:
   contents: write
 
 jobs:
-  release:
+  build:
+    name: Build ${{ matrix.goos }}/${{ matrix.goarch }}
     runs-on: ${{ matrix.os }}
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - goos: linux
-            goarch: amd64
-            os: ubuntu-latest
-          - goos: darwin
-            goarch: arm64
-            os: macos-latest
-          - goos: darwin
-            goarch: amd64
-            os: macos-latest
+          - { goos: linux, goarch: amd64, os: ubuntu-latest }
+          - { goos: linux, goarch: arm64, os: ubuntu-24.04-arm }
+          - { goos: darwin, goarch: arm64, os: macos-latest }
+          - { goos: darwin, goarch: amd64, os: macos-latest, cc: "clang -arch x86_64" }
+          - { goos: windows, goarch: amd64, os: windows-latest }
+    defaults:
+      run:
+        shell: bash
     steps:
       - uses: actions/checkout@v4
 
-      - name: Setup Go
-        uses: actions/setup-go@v5
+      - uses: actions/setup-go@v5
         with:
           go-version-file: go.mod
 
@@ -34,44 +34,64 @@ jobs:
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y libpcap-dev
 
-      - name: Run tests (Linux)
-        if: runner.os == 'Linux'
-        run: go test -race ./...
+      - name: Test
+        if: matrix.goarch != 'amd64' || matrix.goos != 'darwin'
+        run: go test ./...
 
       - name: Build
         env:
           GOOS: ${{ matrix.goos }}
           GOARCH: ${{ matrix.goarch }}
           CGO_ENABLED: 1
+          CC: ${{ matrix.cc || '' }}
         run: |
-          mkdir -p dist
-          go build -trimpath -ldflags="-s -w -X main.version=${GITHUB_REF_NAME#v}" -o dist/wavetrack-${{ matrix.goos }}-${{ matrix.goarch }} ./cmd/wavetrack
+          version="${GITHUB_REF_NAME#v}"
+          name="wavetrack_${version}_${GOOS}_${GOARCH}"
+          exe=wavetrack
+          [ "$GOOS" = windows ] && exe=wavetrack.exe
+          [ -z "$CC" ] && unset CC
+          mkdir -p "dist/$name"
+          go build -trimpath -ldflags="-s -w -X main.version=$version" -o "dist/$name/$exe" ./cmd/wavetrack
+          cp README.md README.pt-BR.md config.example.yaml "dist/$name/"
+          cd dist
+          if [ "$GOOS" = windows ]; then
+            7z a -tzip "$name.zip" "$name" > /dev/null
+          else
+            tar czf "$name.tar.gz" "$name"
+          fi
 
-      - name: Upload binary
-        uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v4
         with:
           name: wavetrack-${{ matrix.goos }}-${{ matrix.goarch }}
-          path: dist/wavetrack-${{ matrix.goos }}-${{ matrix.goarch }}
+          path: |
+            dist/*.tar.gz
+            dist/*.zip
 
   publish:
-    needs: release
+    needs: build
     runs-on: ubuntu-latest
-    permissions:
-      contents: write
     steps:
-      - name: Download binaries
-        uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v4
         with:
           path: dist
           merge-multiple: true
 
-      - name: Create checksums
+      - name: Publish
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
+          version="${GITHUB_REF_NAME#v}"
           cd dist
           sha256sum * > checksums.txt
+          cat > notes.md <<EOF
+          WaveTrack ${version} for Linux (x64 and ARM64, including Raspberry Pi), macOS (Apple silicon and Intel) and Windows (x64).
 
-      - name: Create Release
-        uses: softprops/action-gh-release@v2
-        with:
-          generate_release_notes: true
-          files: dist/*
+          Unpack the archive for your system and run \`wavetrack --demo\` to try it with a simulated office, then \`wavetrack doctor\` to set up capture on your network:
+
+          - **macOS:** \`brew install --cask wireshark-chmodbpf\` once, or run with \`sudo\`.
+          - **Linux:** \`sudo apt install libpcap0.8\`, then \`sudo setcap cap_net_raw,cap_net_admin=eip ./wavetrack\`.
+          - **Windows:** install [Npcap](https://npcap.com) with "WinPcap API-compatible mode".
+
+          See the [README](https://github.com/${GITHUB_REPOSITORY}#readme) and the [changelog](https://github.com/${GITHUB_REPOSITORY}/blob/main/CHANGELOG.md).
+          EOF
+          gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" *.tar.gz *.zip checksums.txt --title "WaveTrack ${version}" --notes-file notes.md

@@ -77,7 +77,8 @@ func Choose(configured string, candidates []Interface) (string, error) {
 }
 
 func looksWireless(name string) bool {
-	return strings.HasPrefix(name, "wl") || strings.HasPrefix(name, "wifi")
+	lower := strings.ToLower(name)
+	return strings.HasPrefix(lower, "wl") || strings.HasPrefix(lower, "wifi") || strings.HasPrefix(lower, "wi-fi") || strings.Contains(lower, "wireless")
 }
 
 func ipv4(iface net.Interface) string {
@@ -126,6 +127,27 @@ func wirelessNames() map[string]bool {
 				names[e.Name()] = true
 			}
 		}
+	case "windows":
+		out, err := exec.Command("netsh", "wlan", "show", "interfaces").Output()
+		if err == nil {
+			for _, name := range parseNetshInterfaces(string(out)) {
+				names[name] = true
+			}
+		}
+	}
+	return names
+}
+
+// parseNetshInterfaces reads interface names from `netsh wlan show interfaces`:
+//
+//	Name                   : Wi-Fi
+func parseNetshInterfaces(out string) []string {
+	var names []string
+	for _, line := range strings.Split(out, "\n") {
+		key, value, ok := strings.Cut(line, ":")
+		if ok && strings.TrimSpace(key) == "Name" {
+			names = append(names, strings.TrimSpace(value))
+		}
 	}
 	return names
 }
@@ -148,6 +170,12 @@ func MACForIP(ip string) (net.HardwareAddr, error) {
 			return nil, err
 		}
 		raw = parseProcARP(string(data), parsed.String())
+	case "windows":
+		out, err := exec.Command("arp", "-a", parsed.String()).Output()
+		if err != nil {
+			return nil, fmt.Errorf("arp lookup failed: %w", err)
+		}
+		raw = parseWindowsARP(string(out), parsed.String())
 	default:
 		out, err := exec.Command("/usr/sbin/arp", "-n", parsed.String()).Output()
 		if err != nil {
@@ -166,6 +194,17 @@ func parseProcARP(table, ip string) string {
 		fields := strings.Fields(line)
 		if len(fields) >= 4 && fields[0] == ip && fields[3] != "00:00:00:00:00:00" {
 			return fields[3]
+		}
+	}
+	return ""
+}
+
+// 192.168.1.20          3a-01-0c-4f-00-02     dynamic
+func parseWindowsARP(out, ip string) string {
+	for _, line := range strings.Split(out, "\n") {
+		fields := strings.Fields(line)
+		if len(fields) >= 2 && fields[0] == ip {
+			return strings.ReplaceAll(fields[1], "-", ":")
 		}
 	}
 	return ""

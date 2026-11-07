@@ -58,6 +58,7 @@ You need Go 1.23 or newer and libpcap.
 | macOS | already included with the Xcode Command Line Tools |
 | Debian, Ubuntu, Raspberry Pi OS | `sudo apt install libpcap-dev` |
 | Fedora | `sudo dnf install libpcap-devel` |
+| Windows | [Npcap](https://npcap.com), with "WinPcap API-compatible mode" checked |
 
 ```bash
 git clone https://github.com/lucasrafaldini/wavetrack.git
@@ -65,7 +66,7 @@ cd wavetrack
 make build          # produces ./wavetrack
 ```
 
-Prebuilt binaries for Linux (amd64) and macOS (Apple silicon and Intel) are attached to each [release](https://github.com/lucasrafaldini/wavetrack/releases).
+**Prebuilt binaries** for Linux (x64 and ARM64, so a Raspberry Pi works), macOS (Apple silicon and Intel) and Windows (x64) are attached to each [release](https://github.com/lucasrafaldini/wavetrack/releases). They only need libpcap at run time (Npcap on Windows).
 
 ## 3. First run
 
@@ -105,6 +106,7 @@ Granting permission once is better than running as root, because the database st
 
 - **macOS:** `brew install --cask wireshark-chmodbpf`, then log out and back in.
 - **Linux:** `sudo setcap cap_net_raw,cap_net_admin=eip ./wavetrack`
+- **Windows:** installing Npcap is enough; otherwise run from an Administrator prompt.
 
 ### Step 3: start it and sign in
 

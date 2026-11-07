@@ -27,7 +27,9 @@ Abra o link que ele imprime. Fora do horário comercial, o relógio do demo vai 
 
 ## 2. Instalação
 
-Precisa de Go 1.23+ e libpcap (`sudo apt install libpcap-dev` no Debian/Ubuntu; no macOS já vem com as Command Line Tools do Xcode).
+**Binários prontos** para Linux (x64 e ARM64, inclusive Raspberry Pi), macOS (Apple Silicon e Intel) e Windows (x64) estão em cada [release](https://github.com/lucasrafaldini/wavetrack/releases). No Windows, instale o [Npcap](https://npcap.com) com o modo compatível com WinPcap.
+
+Para compilar: Go 1.23+ e libpcap (`sudo apt install libpcap-dev` no Debian/Ubuntu; no macOS já vem com as Command Line Tools do Xcode).
 
 ```bash
 make build    # gera ./wavetrack
@@ -39,6 +41,7 @@ make build    # gera ./wavetrack
 2. **Confira as permissões:** `./wavetrack doctor` verifica tudo e diz exatamente o que fazer. Prefira conceder a permissão uma vez a rodar como root:
    - **macOS:** `brew install --cask wireshark-chmodbpf` e depois saia e entre na sessão.
    - **Linux:** `sudo setcap cap_net_raw,cap_net_admin=eip ./wavetrack`
+   - **Windows:** basta o Npcap instalado; sem ele, rode num prompt de Administrador.
 3. **Inicie e entre:** `./wavetrack`. A primeira execução imprime, uma única vez, o token de administrador (só o hash dele é guardado). Perdeu? `./wavetrack token reset`.
 
 ![Tela de login](docs/screenshots/signin.png)
