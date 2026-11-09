@@ -47,8 +47,10 @@ type Options struct {
 
 type Server struct {
 	Options
-	store *store.Store
-	clock func() time.Time
+	store      *store.Store
+	clock      func() time.Time
+	loginLimit *limiter
+	joinLimit  *limiter
 }
 
 func New(opts Options) *Server {
@@ -61,7 +63,11 @@ func New(opts Options) *Server {
 	if opts.Logger == nil {
 		opts.Logger = slog.Default()
 	}
-	return &Server{Options: opts, store: opts.Store, clock: opts.Clock}
+	return &Server{
+		Options: opts, store: opts.Store, clock: opts.Clock,
+		loginLimit: newLimiter(10, 10, time.Now),
+		joinLimit:  newLimiter(30, 20, time.Now),
+	}
 }
 
 func (s *Server) Handler() http.Handler {
@@ -70,7 +76,7 @@ func (s *Server) Handler() http.Handler {
 
 	mux.HandleFunc("GET /healthz", func(w http.ResponseWriter, r *http.Request) { io.WriteString(w, "ok\n") })
 
-	mux.HandleFunc("POST /api/login", s.login)
+	mux.HandleFunc("POST /api/login", s.loginLimit.wrap(s.login))
 	mux.HandleFunc("POST /api/logout", s.logout)
 	mux.HandleFunc("GET /api/me", auth(func(w http.ResponseWriter, r *http.Request) { writeJSON(w, map[string]bool{"signed_in": true}) }))
 
@@ -89,8 +95,11 @@ func (s *Server) Handler() http.Handler {
 	mux.HandleFunc("DELETE /api/devices/{mac}", auth(s.removeDevice))
 
 	mux.HandleFunc("POST /api/invites", auth(s.createInvite))
-	mux.HandleFunc("GET /api/invites/{token}", s.checkInvite)
-	mux.HandleFunc("POST /api/register", s.register)
+	mux.HandleFunc("GET /api/invites/{token}", s.joinLimit.wrap(s.checkInvite))
+	mux.HandleFunc("POST /api/register", s.joinLimit.wrap(s.register))
+
+	mux.HandleFunc("GET /api/audit", auth(s.auditLog))
+	mux.HandleFunc("GET /api/audit.csv", auth(s.auditCSV))
 
 	files := http.FileServerFS(s.Assets)
 	mux.Handle("GET /assets/", files)
@@ -121,26 +130,41 @@ func (s *Server) login(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !s.checkAdminToken(body.Token) {
-		time.Sleep(400 * time.Millisecond) // slow down guessing
+		s.record(r, actorAnonymous, "session.sign_in_failed", "", "")
 		writeError(w, http.StatusUnauthorized, "That access token isn’t right.")
 		return
 	}
-	if err := s.startSession(w, r); err != nil {
+	token, err := s.startSession(w, r)
+	if err != nil {
 		s.fail(w, err)
 		return
 	}
+	s.record(r, "admin:"+Hash(token)[:6], "session.sign_in", "", "")
 	writeJSON(w, map[string]bool{"signed_in": true})
 }
 
 func (s *Server) logout(w http.ResponseWriter, r *http.Request) {
+	if s.signedIn(r) {
+		s.record(r, sessionActor(r), "session.sign_out", "", "")
+	}
 	s.endSession(w, r)
 	w.WriteHeader(http.StatusNoContent)
 }
 
 // MARK: now
 
+// status feeds the dashboard's status bar: what is captured, and how many people are in.
 func (s *Server) status(w http.ResponseWriter, r *http.Request) {
-	writeJSON(w, map[string]any{"now": s.clock(), "capture": s.Capture, "version": s.Version})
+	now := s.clock()
+	people, err := s.store.People(false)
+	if err != nil {
+		s.fail(w, err)
+		return
+	}
+	writeJSON(w, map[string]any{
+		"now": now, "capture": s.Capture, "version": s.Version,
+		"present": len(s.Tracker.Snapshot(now).Present), "people": len(people),
+	})
 }
 
 type personNow struct {
@@ -335,6 +359,7 @@ func (s *Server) exportCSV(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
+	s.record(r, sessionActor(r), "export.csv", "", fmt.Sprintf("%d days", days))
 	w.Header().Set("Content-Type", "text/csv; charset=utf-8")
 	w.Header().Set("Content-Disposition", fmt.Sprintf(`attachment; filename="wavetrack-%s-to-%s.csv"`, dates[0], dates[len(dates)-1]))
 	out := csv.NewWriter(w)
@@ -437,6 +462,7 @@ func (s *Server) createPerson(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	s.reload()
+	s.record(r, sessionActor(r), "person.create", personRef(person.ID), fmt.Sprintf("%d device(s)", len(body.Devices)))
 	person, _ = s.store.Person(person.ID)
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, person)
@@ -459,6 +485,7 @@ func (s *Server) updatePerson(w http.ResponseWriter, r *http.Request) {
 		s.notFoundOr(w, err)
 		return
 	}
+	s.record(r, sessionActor(r), "person.update", personRef(id), "name or team")
 	person, _ := s.store.Person(id)
 	writeJSON(w, person)
 }
@@ -470,8 +497,10 @@ func (s *Server) deletePerson(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	var err error
+	action := "person.archive"
 	switch r.URL.Query().Get("mode") {
 	case "erase":
+		action = "person.erase"
 		err = s.store.ErasePerson(id)
 	case "", "archive":
 		err = s.store.ArchivePerson(id, s.clock())
@@ -485,6 +514,7 @@ func (s *Server) deletePerson(w http.ResponseWriter, r *http.Request) {
 	}
 	s.Tracker.Forget(id)
 	s.reload()
+	s.record(r, sessionActor(r), action, personRef(id), "")
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -527,11 +557,13 @@ func (s *Server) addDevice(w http.ResponseWriter, r *http.Request) {
 		writeError(w, http.StatusBadRequest, msg)
 		return
 	}
-	if err := s.store.AddDevice(s.device(body, id, s.clock())); err != nil {
+	device := s.device(body, id, s.clock())
+	if err := s.store.AddDevice(device); err != nil {
 		s.deviceError(w, err)
 		return
 	}
 	s.reload()
+	s.record(r, sessionActor(r), "device.add", personRef(id), maskMAC(device.MAC))
 	person, _ := s.store.Person(id)
 	w.WriteHeader(http.StatusCreated)
 	writeJSON(w, person)
@@ -543,6 +575,8 @@ func (s *Server) removeDevice(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.reload()
+	mac, _ := store.NormalizeMAC(r.PathValue("mac"))
+	s.record(r, sessionActor(r), "device.remove", maskMAC(mac), "")
 	w.WriteHeader(http.StatusNoContent)
 }
 
@@ -573,6 +607,7 @@ func (s *Server) createInvite(w http.ResponseWriter, r *http.Request) {
 		s.fail(w, err)
 		return
 	}
+	s.record(r, sessionActor(r), "invite.create", "", "expires "+expires.In(s.Location).Format("2006-01-02 15:04"))
 	url := s.InviteBase(r) + "/join/" + token
 	png, err := qrcode.Encode(url, qrcode.Medium, 512)
 	if err != nil {
@@ -643,6 +678,7 @@ func (s *Server) register(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	s.reload()
+	s.record(r, actorInvite, "invite.redeem", personRef(person.ID), "self-registered with consent")
 	writeJSON(w, map[string]any{"name": person.Name})
 }
 

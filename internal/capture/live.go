@@ -8,9 +8,9 @@ import (
 	"sync"
 	"time"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
-	"github.com/google/gopacket/pcap"
+	"github.com/gopacket/gopacket"
+	"github.com/gopacket/gopacket/layers"
+	"github.com/gopacket/gopacket/pcap"
 )
 
 // In managed mode a Wi-Fi card only hands over traffic that reaches the host, so listen
@@ -100,6 +100,7 @@ func pcapDevice(iface string) (string, error) {
 			}
 		}
 	}
+	//lint:ignore ST1005 Npcap is a product name
 	return "", fmt.Errorf("Npcap doesn't list %q; is the interface connected?", iface)
 }
 
@@ -151,7 +152,7 @@ func (l *Live) sighting(packet gopacket.Packet) (Sighting, bool) {
 		}
 		mac = dot11.Address2
 		if radio, ok := packet.Layer(layers.LayerTypeRadioTap).(*layers.RadioTap); ok {
-			signal = int(radio.DBMAntennaSignal)
+			signal = antennaSignal(radio)
 		}
 	} else if eth, ok := packet.Layer(layers.LayerTypeEthernet).(*layers.Ethernet); ok {
 		mac = eth.SrcMAC
@@ -179,4 +180,16 @@ func (l *Live) Close() error {
 		l.handle.Close()
 	})
 	return nil
+}
+
+// antennaSignal returns the frame's signal in dBm, or 0 when the driver doesn't report it.
+// Radiotap headers can repeat their fields once per antenna chain; the first namespace
+// carries the combined signal.
+func antennaSignal(radio *layers.RadioTap) int {
+	for i, values := range radio.RadioTapValues {
+		if i < len(radio.Present) && radio.Present[i].DBMAntennaSignal() && values.DBMAntennaSignal != 0 {
+			return int(values.DBMAntennaSignal)
+		}
+	}
+	return 0
 }

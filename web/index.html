@@ -36,14 +36,30 @@
         <a href="#/history"><svg class="icon"><use href="/assets/icons.svg#history"/></svg><span>History</span></a>
         <a href="#/people"><svg class="icon"><use href="/assets/icons.svg#people"/></svg><span>People</span></a>
         <a href="#/nearby"><svg class="icon"><use href="/assets/icons.svg#nearby"/></svg><span>Nearby</span></a>
+        <a href="#/audit"><svg class="icon"><use href="/assets/icons.svg#shield"/></svg><span>Audit</span></a>
       </nav>
       <div class="topbar-end">
-        <span class="status" id="status"><span class="pulse"></span><span class="label">Connecting…</span></span>
-        <button class="icon-button" id="theme" type="button" aria-label="Switch theme"><svg class="icon"><use href="/assets/icons.svg#moon"/></svg></button>
-        <button class="icon-button" id="signout" type="button" aria-label="Sign out"><svg class="icon"><use href="/assets/icons.svg#logout"/></svg></button>
+        <label class="theme-picker"><span class="sr-only">Theme</span>
+          <select id="theme">
+            <option value="">System</option>
+            <option value="light">Light</option>
+            <option value="dark">Dark</option>
+            <option value="classic">Classic</option>
+            <option value="code">Code</option>
+            <option value="contrast">High contrast</option>
+          </select>
+        </label>
+        <button class="icon-button" id="signout" type="button" aria-label="Sign out" title="Sign out"><svg class="icon"><use href="/assets/icons.svg#logout"/></svg></button>
       </div>
     </header>
     <main id="view" tabindex="-1"></main>
+    <footer class="statusbar" aria-label="Status">
+      <span class="sb-item" id="sb-capture"><span class="pulse"></span><span class="label">Connecting…</span></span>
+      <span class="sb-item" id="sb-presence"></span>
+      <span class="sb-spacer"></span>
+      <span class="sb-item sb-optional" id="sb-updated"></span>
+      <span class="sb-item sb-optional" id="sb-version"></span>
+    </footer>
   </div>
 
   <dialog id="dialog"></dialog>
