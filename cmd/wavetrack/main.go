@@ -3,6 +3,7 @@ package main
 
 import (
 	"context"
+	"crypto/tls"
 	"errors"
 	"flag"
 	"fmt"
@@ -17,7 +18,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/google/gopacket/pcap"
+	"github.com/gopacket/gopacket/pcap"
 
 	"github.com/lucasrafaldini/wavetrack/internal/capture"
 	"github.com/lucasrafaldini/wavetrack/internal/config"
@@ -31,7 +32,7 @@ import (
 	"github.com/lucasrafaldini/wavetrack/web"
 )
 
-var version = "3.0.0-dev"
+var version = "3.1.0-dev"
 
 const usage = `WaveTrack %s: see who's in, from the phones on your Wi-Fi.
 
@@ -184,7 +185,7 @@ func serve(args []string) error {
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 	go tracker.Run(ctx, source)
-	go retention(ctx, st, cfg.Privacy.RetentionDays, clock, logger)
+	go retention(ctx, st, cfg.Privacy, clock, logger)
 
 	_, port, _ := net.SplitHostPort(cfg.Listen)
 	if port == "" {
@@ -195,7 +196,7 @@ func serve(args []string) error {
 		Store: st, Tracker: tracker, Ident: ident, Capture: desc, Assets: web.FS,
 		Clock: clock, AwayAfter: cfg.Presence.AwayAfter.Duration,
 		LookupMAC:  netinfo.MACForIP,
-		InviteBase: inviteBase(cfg.PublicURL, desc.Interface, port),
+		InviteBase: inviteBase(cfg.PublicURL, scheme(cfg), desc.Interface, port),
 		Version:    version, Logger: logger,
 	})
 
@@ -203,15 +204,31 @@ func serve(args []string) error {
 	if err != nil {
 		return fmt.Errorf("can't listen on %s: %w", cfg.Listen, err)
 	}
-	httpServer := &http.Server{Handler: srv.Handler(), ReadHeaderTimeout: 10 * time.Second}
+	// Every phase of a request is bounded, so slow or stalled clients can't hold
+	// connections open. The write timeout leaves room for a year-long CSV export.
+	httpServer := &http.Server{
+		Handler:           srv.Handler(),
+		ReadHeaderTimeout: 10 * time.Second,
+		ReadTimeout:       30 * time.Second,
+		WriteTimeout:      2 * time.Minute,
+		IdleTimeout:       2 * time.Minute,
+		MaxHeaderBytes:    64 << 10,
+		ErrorLog:          slog.NewLogLogger(logger.Handler(), slog.LevelWarn),
+	}
 	go func() {
-		if err := httpServer.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		var err error
+		if cfg.TLS.Enabled() {
+			err = httpServer.ServeTLS(listener, cfg.TLS.CertFile, cfg.TLS.KeyFile)
+		} else {
+			err = httpServer.Serve(listener)
+		}
+		if err != nil && !errors.Is(err, http.ErrServerClosed) {
 			logger.Error("dashboard stopped", "err", err)
 			stop()
 		}
 	}()
 
-	announce(st, desc, port, o.demo, logger)
+	announce(st, desc, scheme(cfg), port, o.demo, logger)
 
 	<-ctx.Done()
 	logger.Info("shutting down")
@@ -222,12 +239,19 @@ func serve(args []string) error {
 	return nil
 }
 
-func announce(st *store.Store, desc capture.Description, port string, isDemo bool, logger *slog.Logger) {
+func scheme(cfg config.Config) string {
+	if cfg.TLS.Enabled() {
+		return "https"
+	}
+	return "http"
+}
+
+func announce(st *store.Store, desc capture.Description, scheme, port string, isDemo bool, logger *slog.Logger) {
 	what := "capturing on " + desc.Interface + " (" + desc.Mode + " mode)"
 	if isDemo {
 		what = "running a simulated office"
 	}
-	url := "http://localhost:" + port
+	url := scheme + "://localhost:" + port
 	fmt.Fprintf(os.Stderr, "\n  WaveTrack %s · %s\n  Dashboard: %s\n", version, what, url)
 
 	token, err := server.EnsureAdminToken(st)
@@ -243,7 +267,7 @@ func announce(st *store.Store, desc capture.Description, port string, isDemo boo
 
 // inviteBase builds the address phones use to open invite links. A browser on the
 // WaveTrack machine itself says "localhost", which a phone can't reach, so use the LAN address.
-func inviteBase(publicURL, iface, port string) func(*http.Request) string {
+func inviteBase(publicURL, scheme, iface, port string) func(*http.Request) string {
 	return func(r *http.Request) string {
 		if publicURL != "" {
 			return strings.TrimRight(publicURL, "/")
@@ -253,34 +277,45 @@ func inviteBase(publicURL, iface, port string) func(*http.Request) string {
 			host = r.Host
 		}
 		if ip := net.ParseIP(host); host != "localhost" && (ip == nil || !ip.IsLoopback()) {
-			return "http://" + r.Host
+			return scheme + "://" + r.Host
 		}
 		if ip := netinfo.IPv4(iface); ip != "" {
-			return "http://" + ip + ":" + port
+			return scheme + "://" + ip + ":" + port
 		}
 		if list, err := netinfo.Interfaces(); err == nil {
 			for _, c := range list {
 				if c.Up && c.IPv4 != "" {
-					return "http://" + c.IPv4 + ":" + port
+					return scheme + "://" + c.IPv4 + ":" + port
 				}
 			}
 		}
-		return "http://" + r.Host
+		return scheme + "://" + r.Host
 	}
 }
 
-func retention(ctx context.Context, st *store.Store, days int, clock func() time.Time, logger *slog.Logger) {
-	if days == 0 {
-		return
-	}
+// retention deletes what the configuration says not to keep, at start and every six
+// hours: old visits, old audit entries, and expired sessions and invites.
+func retention(ctx context.Context, st *store.Store, privacy config.Privacy, clock func() time.Time, logger *slog.Logger) {
 	ticker := time.NewTicker(6 * time.Hour)
 	defer ticker.Stop()
 	for {
-		cutoff := clock().AddDate(0, 0, -days)
-		if n, err := st.PurgeVisitsBefore(cutoff); err != nil {
-			logger.Error("retention", "err", err)
-		} else if n > 0 {
-			logger.Info("retention", "deleted_visits", n, "older_than", cutoff.Format(time.DateOnly))
+		now := clock()
+		if privacy.RetentionDays > 0 {
+			cutoff := now.AddDate(0, 0, -privacy.RetentionDays)
+			if n, err := st.PurgeVisitsBefore(cutoff); err != nil {
+				logger.Error("retention", "err", err)
+			} else if n > 0 {
+				logger.Info("retention", "deleted_visits", n, "older_than", cutoff.Format(time.DateOnly))
+				_ = st.Audit(store.AuditEntry{At: now, Actor: "system", Action: "retention.visits", Detail: fmt.Sprintf("%d visits before %s", n, cutoff.Format(time.DateOnly))})
+			}
+		}
+		if privacy.AuditRetentionDays > 0 {
+			if _, err := st.PurgeAuditBefore(now.AddDate(0, 0, -privacy.AuditRetentionDays)); err != nil {
+				logger.Error("audit retention", "err", err)
+			}
+		}
+		if err := st.PurgeExpired(now); err != nil {
+			logger.Error("purging expired sessions", "err", err)
 		}
 		select {
 		case <-ctx.Done():
@@ -378,6 +413,13 @@ func doctor(args []string) error {
 		check(err == nil, "permission to capture on "+iface, fix)
 	}
 
+	if cfg.TLS.Enabled() {
+		_, err := tls.LoadX509KeyPair(cfg.TLS.CertFile, cfg.TLS.KeyFile)
+		check(err == nil, "TLS certificate "+cfg.TLS.CertFile, fmt.Sprint(err))
+	} else if host, _, _ := net.SplitHostPort(cfg.Listen); host == "" || (net.ParseIP(host) != nil && !net.ParseIP(host).IsLoopback()) {
+		fmt.Println("  · the dashboard is served over plain HTTP on the network; add tls: to config.yaml to encrypt it")
+	}
+
 	probe := filepath.Join(cfg.DataDir, ".write-test")
 	err = os.MkdirAll(cfg.DataDir, 0o750)
 	if err == nil {
@@ -422,6 +464,7 @@ func token(args []string) error {
 	if err != nil {
 		return err
 	}
+	_ = st.Audit(store.AuditEntry{At: time.Now(), Actor: "cli", Action: "token.reset", Detail: "every browser signed out"})
 	fmt.Printf("New admin token (every browser was signed out):\n  %s\n", t)
 	return nil
 }

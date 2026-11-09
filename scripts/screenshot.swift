@@ -1,8 +1,9 @@
 // Renders WaveTrack pages off-screen and saves Retina PNGs for the documentation.
 // macOS only; needs no screen-recording permission because it never touches the screen.
 //
-//   swift scripts/screenshot.swift <base-url> <admin-token> <out-dir> <name>=<route>[@width x height][:dark] ...
-//   e.g. now=/now history=/history@1440x900:dark join=/join/abc@390x844
+//   swift scripts/screenshot.swift <base-url> <admin-token> <out-dir> <name>=<route>[@width x height][:theme] ...
+//   e.g. now=/now history=/history@1440x900:dark audit=/audit:classic join=/join/abc@390x844
+//   Themes: light (default), dark, classic, code, contrast.
 //   Append |Button label to click a button before the shot: invite=/people|Invite with QR code
 //   The route /signin signs out first, to capture the sign-in page.
 
@@ -14,8 +15,11 @@ struct Shot {
     let route: String
     let click: String?
     let size: CGSize
-    let dark: Bool
+    let theme: String
+    var dark: Bool { ["dark", "code", "contrast"].contains(theme) }
 }
+
+let themes = ["light", "dark", "classic", "code", "contrast"]
 
 func parse(_ arg: String) -> Shot {
     var rest = arg
@@ -24,10 +28,10 @@ func parse(_ arg: String) -> Shot {
         click = String(rest[rest.index(after: bar)...])
         rest = String(rest[..<bar])
     }
-    var dark = false
-    if rest.hasSuffix(":dark") {
-        dark = true
-        rest.removeLast(5)
+    var theme = "light"
+    if let colon = rest.lastIndex(of: ":"), themes.contains(String(rest[rest.index(after: colon)...])) {
+        theme = String(rest[rest.index(after: colon)...])
+        rest = String(rest[..<colon])
     }
     var size = CGSize(width: 1440, height: 900)
     if let at = rest.lastIndex(of: "@") {
@@ -37,7 +41,7 @@ func parse(_ arg: String) -> Shot {
     }
     let parts = rest.split(separator: "=", maxSplits: 1).map(String.init)
     // Click labels may themselves contain ":" or "@", so dimensions and theme come first.
-    return Shot(name: parts[0], route: parts.count > 1 ? parts[1] : "/now", click: click, size: size, dark: dark)
+    return Shot(name: parts[0], route: parts.count > 1 ? parts[1] : "/now", click: click, size: size, theme: theme)
 }
 
 @MainActor
@@ -91,7 +95,7 @@ final class Shooter: NSObject, WKNavigationDelegate {
         for shot in shots {
             webView.appearance = NSAppearance(named: shot.dark ? .darkAqua : .aqua)
             webView.setFrameSize(shot.size)
-            let theme = shot.dark ? "dark" : "light"
+            let theme = shot.theme
             if shot.route == "/signin" {
                 _ = try? await webView.evaluateJavaScript("fetch('/api/logout', {method: 'POST', headers: {'Content-Type': 'application/json'}, body: '{}'})")
                 await pause(0.5)
@@ -137,7 +141,7 @@ final class Shooter: NSObject, WKNavigationDelegate {
 
 let args = CommandLine.arguments
 guard args.count >= 5 else {
-    print("usage: swift screenshot.swift <base-url> <token> <out-dir> <name>=<route>[@WxH][:dark] ...")
+    print("usage: swift screenshot.swift <base-url> <token> <out-dir> <name>=<route>[@WxH][:light|dark|classic|code|contrast] ...")
     exit(2)
 }
 let outDir = URL(fileURLWithPath: args[3], isDirectory: true)

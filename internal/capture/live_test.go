@@ -5,8 +5,8 @@ import (
 	"testing"
 	"time"
 
-	"github.com/google/gopacket"
-	"github.com/google/gopacket/layers"
+	"github.com/gopacket/gopacket"
+	"github.com/gopacket/gopacket/layers"
 )
 
 func packet(t *testing.T, first gopacket.LayerType, ls ...gopacket.SerializableLayer) gopacket.Packet {
@@ -42,7 +42,7 @@ func TestMonitorModeReadsTheTransmitterAndSignal(t *testing.T) {
 	phone, _ := net.ParseMAC("8c:f5:a3:77:19:2e")
 	l := &Live{monitor: true, throttle: newThrottle(15 * time.Second)}
 	frame := packet(t, layers.LayerTypeRadioTap,
-		&layers.RadioTap{Present: layers.RadioTapPresentDBMAntennaSignal, DBMAntennaSignal: -61},
+		&layers.RadioTap{Present: []layers.RadioTapPresent{layers.RadioTapPresentDBMAntennaSignal}, RadioTapValues: []layers.RadioTapNamespace{{DBMAntennaSignal: -61}}},
 		&layers.Dot11{Type: layers.Dot11TypeMgmtProbeReq, Address1: net.HardwareAddr{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}, Address2: phone, Address3: net.HardwareAddr{0xff, 0xff, 0xff, 0xff, 0xff, 0xff}},
 		gopacket.Payload([]byte{0, 0}))
 

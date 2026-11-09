@@ -8,8 +8,17 @@ listen: ":8080"
 # (for example behind a reverse proxy). Leave empty to detect it.
 public_url: ""
 
-# Database location.
+# Database location. The database is created readable by its owner only.
 data_dir: "./data"
+
+# Serve the dashboard over HTTPS, so the admin token and session never cross the network
+# in clear text. Both files are needed; leave both empty for plain HTTP.
+# For a quick self-signed certificate:
+#   openssl req -x509 -newkey ec -pkeyopt ec_paramgen_curve:prime256v1 -nodes -days 825 \
+#     -keyout key.pem -out cert.pem -subj "/CN=wavetrack" -addext "subjectAltName=IP:192.168.1.10"
+tls:
+  cert_file: ""
+  key_file: ""
 
 capture:
   # Network interface to watch. Leave empty to use the connected Wi-Fi interface.
@@ -30,3 +39,5 @@ presence:
 privacy:
   # Delete visits older than this many days. 0 keeps them forever.
   retention_days: 365
+  # Delete audit log entries older than this many days. 0 keeps them forever.
+  audit_retention_days: 730

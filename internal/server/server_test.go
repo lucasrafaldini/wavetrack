@@ -94,7 +94,7 @@ func decode[T any](t *testing.T, res *http.Response) T {
 
 func TestAdminAPIRequiresASession(t *testing.T) {
 	h := newHarness(t)
-	for _, path := range []string{"/api/now", "/api/people", "/api/history", "/api/nearby", "/api/export.csv"} {
+	for _, path := range []string{"/api/now", "/api/people", "/api/history", "/api/nearby", "/api/export.csv", "/api/audit", "/api/audit.csv"} {
 		if res := h.do("GET", path, ""); res.StatusCode != http.StatusUnauthorized {
 			t.Errorf("%s = %d without a session", path, res.StatusCode)
 		}
@@ -160,6 +160,11 @@ func TestWritesMustBeJSON(t *testing.T) {
 func TestSecurityHeaders(t *testing.T) {
 	h := newHarness(t)
 	res := h.do("GET", "/", "")
+	for name, want := range map[string]string{"Cross-Origin-Opener-Policy": "same-origin", "Cross-Origin-Resource-Policy": "same-origin", "X-Content-Type-Options": "nosniff"} {
+		if got := res.Header.Get(name); got != want {
+			t.Errorf("%s = %q, want %q", name, got, want)
+		}
+	}
 	if csp := res.Header.Get("Content-Security-Policy"); !strings.Contains(csp, "script-src 'self'") || strings.Contains(csp, "unsafe-inline") {
 		t.Errorf("CSP = %q", csp)
 	}
@@ -311,5 +316,89 @@ func TestNowReportsPresenceAndTheDaysEvents(t *testing.T) {
 	}
 	if len(body.Events) != 2 || body.Events[0].Kind != presence.Left {
 		t.Fatalf("events = %+v, want departure first", body.Events)
+	}
+}
+
+func TestSignInIsRateLimitedPerClient(t *testing.T) {
+	h := newHarness(t)
+	for i := range 10 {
+		if res := h.do("POST", "/api/login", `{"token":"wt_wrong"}`); res.StatusCode != http.StatusUnauthorized {
+			t.Fatalf("attempt %d = %d", i+1, res.StatusCode)
+		}
+	}
+	res := h.do("POST", "/api/login", `{"token":"`+h.token+`"}`)
+	if res.StatusCode != http.StatusTooManyRequests || res.Header.Get("Retry-After") == "" {
+		t.Fatalf("11th attempt = %d, Retry-After %q", res.StatusCode, res.Header.Get("Retry-After"))
+	}
+}
+
+func TestLimiterRefillsOverTime(t *testing.T) {
+	now := testutil.Day(9, 0)
+	l := newLimiter(60, 2, func() time.Time { return now })
+	l.allow("a")
+	l.allow("a")
+	if ok, wait := l.allow("a"); ok || wait <= 0 || wait > time.Second {
+		t.Fatalf("third call = %v, wait %v", ok, wait)
+	}
+	if ok, _ := l.allow("b"); !ok {
+		t.Fatal("another client was limited")
+	}
+	now = now.Add(time.Second)
+	if ok, _ := l.allow("a"); !ok {
+		t.Fatal("no token after a second at 60/min")
+	}
+}
+
+type auditPage struct {
+	Entries []store.AuditEntry `json:"entries"`
+}
+
+func TestAdministrativeActionsAreAuditedWithoutPersonalData(t *testing.T) {
+	h := newHarness(t)
+	h.do("POST", "/api/login", `{"token":"wt_wrong"}`)
+	h.signIn()
+	ana := decode[store.Person](t, h.do("POST", "/api/people", `{"name":"Ana Ribeiro","team":"Design","devices":[{"mac":"a4:83:e7:21:5c:10"}]}`))
+	h.do("PATCH", "/api/people/"+itoa(ana.ID), `{"name":"Ana R.","team":"Design"}`)
+	h.do("GET", "/api/export.csv?days=7", "")
+	h.do("DELETE", "/api/people/"+itoa(ana.ID)+"?mode=erase", "")
+
+	res := h.do("GET", "/api/audit", "")
+	page := decode[auditPage](t, res)
+	var actions []string
+	for _, e := range page.Entries {
+		actions = append(actions, e.Action)
+		for _, field := range []string{e.Target, e.Detail} {
+			if strings.Contains(field, "Ana") || strings.Contains(field, "21:5c") {
+				t.Errorf("%s leaks personal data: %q", e.Action, field)
+			}
+		}
+		if e.IP == "" || e.Actor == "" {
+			t.Errorf("%s has no actor or IP: %+v", e.Action, e)
+		}
+	}
+	want := "person.erase export.csv person.update person.create session.sign_in session.sign_in_failed"
+	if got := strings.Join(actions, " "); got != want {
+		t.Fatalf("audit = %s\nwant    %s", got, want)
+	}
+	if page.Entries[0].Target != personRef(ana.ID) || !strings.HasPrefix(page.Entries[0].Actor, "admin:") {
+		t.Fatalf("erase entry = %+v", page.Entries[0])
+	}
+	if page.Entries[len(page.Entries)-1].Actor != actorAnonymous {
+		t.Fatalf("failed sign-in actor = %q", page.Entries[len(page.Entries)-1].Actor)
+	}
+
+	csvRes := h.do("GET", "/api/audit.csv", "")
+	body, _ := io.ReadAll(csvRes.Body)
+	if !strings.HasPrefix(string(body), "time,actor,ip,action,target,detail") || !strings.Contains(string(body), "person.erase") {
+		t.Fatalf("audit.csv = %s", body)
+	}
+}
+
+func TestMaskMAC(t *testing.T) {
+	if got := maskMAC("a4:83:e7:21:5c:10"); got != "a4:83:e7:••:••:10" {
+		t.Fatalf("maskMAC = %q", got)
+	}
+	if got := maskMAC("garbage"); got != "device" {
+		t.Fatalf("maskMAC(garbage) = %q", got)
 	}
 }
