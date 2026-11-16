@@ -21,7 +21,7 @@ Themes, an audit log, a security review and a faster dashboard. The review is in
 - The dashboard refresh is 14 times faster with a year of history (5.8 ms to 0.4 ms for `/api/now`), and 40 times faster with ten dashboards open at once: today's visits are found by index instead of by scanning the history, and reads use their own connection pool.
 - SQLite runs with `synchronous=NORMAL` in WAL mode, as SQLite recommends.
 - The database and its WAL files are created readable by their owner only; the systemd unit is further restricted (kernel, namespaces, address families, `UMask=0077`).
-- Moved from the archived `google/gopacket` and unmaintained `gopkg.in/yaml.v3` to their maintained successors (the new packet library models radiotap headers with several namespaces; WaveTrack reads the signal from the first one that reports it); updated `go-sqlite3` and `x/sys`; Go 1.26 or newer, built with Go 1.27.3.
+- Moved from the archived `google/gopacket` and unmaintained `gopkg.in/yaml.v3` to their maintained successors (the new packet library models radiotap headers with several namespaces; WaveTrack reads the signal from the first one that reports it); updated `go-sqlite3` and `x/sys`; Go 1.26 or newer, built with Go 1.27.4 (fixes GO-2026-6809 and GO-2026-6859 in the standard library).
 - Expired sessions and invites are purged with the retention job.
 - Avatar colors no longer include purples; initials skip numbers and symbols.
 - The `/api/status` response includes how many people are in.

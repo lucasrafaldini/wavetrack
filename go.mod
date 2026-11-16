@@ -2,7 +2,7 @@ module github.com/lucasrafaldini/wavetrack
 
 go 1.26.0
 
-toolchain go1.27.3
+toolchain go1.27.4
 
 require (
 	github.com/gopacket/gopacket v1.7.7
