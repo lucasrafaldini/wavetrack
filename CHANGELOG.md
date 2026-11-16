@@ -2,7 +2,7 @@
 
 All notable changes to WaveTrack are documented here. The format follows [Keep a Changelog](https://keepachangelog.com/en/1.1.0/) and the project uses [Semantic Versioning](https://semver.org/).
 
-## [3.1.0] - Unreleased
+## [3.1.0] - 2026-11-16
 
 Themes, an audit log, a security review and a faster dashboard. The review is in [docs/security.md](docs/security.md), the measurements in [docs/benchmarks.md](docs/benchmarks.md).
 
