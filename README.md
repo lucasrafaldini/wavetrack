@@ -11,7 +11,9 @@
 - **History:** hours per person per day for 7, 14 or 30 days, exportable to CSV.
 - **People:** self-registration by QR code, several devices per person, anonymize or erase on request.
 - **Nearby:** devices seen recently that belong to nobody, ready to be assigned.
-- A single Go binary with the dashboard built in, SQLite storage, and a demo mode that needs no setup.
+- **Audit:** every administrative action, who did it and from where, without keeping personal data.
+- **Five sober themes**, from a clean light interface to a Windows-2000-style classic and a code-editor dark.
+- A single Go binary with the dashboard built in, SQLite storage, optional HTTPS, and a demo mode that needs no setup.
 
 ## Contents
 
@@ -24,22 +26,22 @@
 7. [Configuration](#7-configuration)
 8. [Run it as a service](#8-run-it-as-a-service)
 9. [How it works](#9-how-it-works)
-10. [API](#10-api)
-11. [Upgrading from 2.x](#11-upgrading-from-2x)
-12. [Development](#12-development)
+10. [Security](#10-security)
+11. [Performance](#11-performance)
+12. [API](#12-api)
+13. [Upgrading from 2.x](#13-upgrading-from-2x)
+14. [Development](#14-development)
 
 ## 1. Try it in one minute
 
-The demo simulates an office of twelve people with two weeks of history. It needs no capture permissions and leaves nothing behind.
+The demo simulates an office of twelve people with two weeks of history. It needs no capture permissions and leaves nothing behind. [Install](#2-install) WaveTrack, then:
 
 ```bash
-git clone https://github.com/lucasrafaldini/wavetrack.git
-cd wavetrack
-make demo
+wavetrack serve --demo
 ```
 
 ```
-  WaveTrack 3.0.0 · running a simulated office
+  WaveTrack 3.1.0 · running a simulated office
   Dashboard: http://localhost:8080
 
   Your admin access token (shown once, keep it safe):
@@ -47,18 +49,40 @@ make demo
   Or open http://localhost:8080/#token=wt_gdrwbpc6ziucn3zaodujtfdz4jpkc6eo to sign in directly.
 ```
 
-Open the link it prints. Outside office hours the demo moves its clock to 14:20, so the office always looks busy.
+Open the link it prints. Outside office hours the demo moves its clock to 14:20, and on weekends to Friday, so the office always looks busy.
 
 ## 2. Install
 
-You need Go 1.23 or newer and libpcap.
+### One command
+
+**macOS and Linux** (x64 and ARM64, so a Raspberry Pi works):
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/lucasrafaldini/wavetrack/main/scripts/install.sh | sh
+```
+
+**Windows** (PowerShell):
+
+```powershell
+irm https://raw.githubusercontent.com/lucasrafaldini/wavetrack/main/scripts/install.ps1 | iex
+```
+
+Both download the latest [release](https://github.com/lucasrafaldini/wavetrack/releases), **verify it against the release's checksums** before installing, and install for your user without administrator rights. They end by listing what's left to do on your system (capture permission, libpcap or Npcap). Options: `--version 3.1.0` and `--prefix DIR` for `install.sh` (pass them after `sh -s --`), `-Version` and `-Destination` for `install.ps1`.
+
+### By hand
+
+Download the archive for your system from the [releases page](https://github.com/lucasrafaldini/wavetrack/releases), check it against `checksums.txt` and put `wavetrack` on your PATH. At run time it needs libpcap:
 
 | System | libpcap |
 | --- | --- |
-| macOS | already included with the Xcode Command Line Tools |
-| Debian, Ubuntu, Raspberry Pi OS | `sudo apt install libpcap-dev` |
-| Fedora | `sudo dnf install libpcap-devel` |
+| macOS | built in |
+| Debian, Ubuntu, Raspberry Pi OS | `sudo apt install libpcap0.8` |
+| Fedora | `sudo dnf install libpcap` |
 | Windows | [Npcap](https://npcap.com), with "WinPcap API-compatible mode" checked |
+
+### From source
+
+You need Go 1.26 or newer, a C compiler and the libpcap headers (`libpcap-dev` on Debian and Ubuntu).
 
 ```bash
 git clone https://github.com/lucasrafaldini/wavetrack.git
@@ -66,14 +90,12 @@ cd wavetrack
 make build          # produces ./wavetrack
 ```
 
-**Prebuilt binaries** for Linux (x64 and ARM64, so a Raspberry Pi works), macOS (Apple silicon and Intel) and Windows (x64) are attached to each [release](https://github.com/lucasrafaldini/wavetrack/releases). They only need libpcap at run time (Npcap on Windows).
-
 ## 3. First run
 
 ### Step 1: pick the interface
 
 ```bash
-./wavetrack interfaces
+wavetrack interfaces
 ```
 
 ```
@@ -90,7 +112,7 @@ WaveTrack picks the connected Wi-Fi interface on its own. It never guesses a wir
 Reading network traffic needs permission. `wavetrack doctor` checks everything and says exactly what to do:
 
 ```
-WaveTrack 3.0.0 on darwin/arm64
+WaveTrack 3.1.0 on darwin/arm64
 
   ✓ configuration: defaults (config.yaml not found)
   ✓ libpcap version 1.10.1
@@ -105,16 +127,16 @@ WaveTrack 3.0.0 on darwin/arm64
 Granting permission once is better than running as root, because the database stays owned by you:
 
 - **macOS:** `brew install --cask wireshark-chmodbpf`, then log out and back in.
-- **Linux:** `sudo setcap cap_net_raw,cap_net_admin=eip ./wavetrack`
+- **Linux:** `sudo setcap cap_net_raw,cap_net_admin=eip "$(command -v wavetrack)"`
 - **Windows:** installing Npcap is enough; otherwise run from an Administrator prompt.
 
 ### Step 3: start it and sign in
 
 ```bash
-./wavetrack
+wavetrack
 ```
 
-The first start prints an admin access token, once; only its hash is stored. Open the dashboard and paste it, or use the sign-in link it prints. Lost it? `./wavetrack token reset` issues a new one and signs every browser out.
+The first start prints an admin access token, once; only its hash is stored. Open the dashboard and paste it, or use the sign-in link it prints. Lost it? `wavetrack token reset` issues a new one and signs every browser out.
 
 ![Sign-in page](docs/screenshots/signin.png)
 
@@ -170,9 +192,33 @@ Hours on site per day. A full cell is an 8-hour day; hover a cell for arrival an
 
 ![History](docs/screenshots/history.png)
 
+### Audit
+
+Every administrative action, newest first: sign-ins (failed ones included), people added, edited, anonymized or erased, devices, invites and exports. Each entry says which browser session did it and from which address. Filter by kind, load older entries, or export the log as CSV.
+
+![Audit log](docs/screenshots/audit.png)
+
+People appear by number (the page shows their current name next to it), and devices with their middle octets masked. Erasing someone therefore leaves nothing personal behind in the log, while the record of the erasure stays.
+
+### Themes
+
+Pick a theme from the menu in the top bar; the choice is remembered per browser. **System** follows the operating system's light or dark appearance.
+
+| Light | Dark |
+| --- | --- |
+| ![Light theme](docs/screenshots/now.png) | ![Dark theme](docs/screenshots/now-dark.png) |
+| **Classic**: a Windows 2000 desktop application | **Code**: a code editor's dark chrome |
+| ![Classic theme](docs/screenshots/theme-classic.png) | ![Code theme](docs/screenshots/theme-code.png) |
+
+**High contrast** uses black, white and saturated signal colors, for low vision and bright rooms.
+
+<img src="docs/screenshots/theme-contrast.png" alt="High contrast theme" width="720">
+
+Presence keeps its own color in every theme, so a colored bar or dot always means "in the office".
+
 ### On a phone
 
-The dashboard is responsive, and follows the system's light or dark appearance (the moon button overrides it).
+The dashboard is responsive; the status bar keeps only what fits.
 
 <img src="docs/screenshots/now-mobile.png" alt="Dashboard on a phone" width="320">
 
@@ -186,9 +232,10 @@ Presence data is personal data. WaveTrack is designed so the right thing is the 
 
   ![Removing a person](docs/screenshots/remove-person.png)
 
-- **Retention.** Visits older than `privacy.retention_days` (365 by default) are deleted automatically.
+- **Retention.** Visits older than `privacy.retention_days` (365 by default) are deleted automatically, and audit entries after `privacy.audit_retention_days` (730).
+- **Accountability.** The [audit log](#audit) records who did what, without storing names or full device addresses.
 - **Nothing leaves the building.** No accounts, no cloud, no telemetry. The only outbound request is a download of the IEEE manufacturer list, used to label devices.
-- **Locked-down dashboard.** Access needs the admin token; sessions use `HttpOnly`, `SameSite=Strict` cookies; requests from other sites are refused; a strict Content Security Policy blocks injected scripts.
+- **Locked-down dashboard.** Access needs the admin token; sessions use `HttpOnly`, `SameSite=Strict` cookies; requests from other sites are refused; a strict Content Security Policy blocks injected scripts; sign-in attempts are rate-limited; HTTPS is one setting away. See [Security](#10-security).
 
 Make sure your use complies with local law and is known to the people in the office.
 
@@ -200,18 +247,20 @@ Everything is optional. Copy [`config.example.yaml`](config.example.yaml) to `co
 | --- | --- | --- |
 | `listen` | `:8080` | Dashboard address. Phones need to reach it for invites. |
 | `public_url` | detected | Base URL for invite links, e.g. behind a reverse proxy. |
-| `data_dir` | `./data` | Where the SQLite database lives. |
+| `data_dir` | `./data` | Where the SQLite database lives (created readable by its owner only). |
+| `tls.cert_file`, `tls.key_file` | empty | Serve the dashboard over HTTPS. Both or neither. |
 | `capture.interface` | Wi-Fi | Interface to watch. |
 | `capture.monitor_mode` | `false` | Capture raw 802.11 frames, adding signal strength. Needs a supporting adapter. |
 | `presence.away_after` | `20m` | Unseen this long means gone. Phones nap to save battery, so keep it above 15m. |
 | `presence.min_signal_dbm` | `-85` | Monitor mode only: ignore weaker devices, e.g. passers-by. |
 | `privacy.retention_days` | `365` | Delete older visits; `0` keeps them forever. |
+| `privacy.audit_retention_days` | `730` | Delete older audit entries; `0` keeps them forever. |
 
 Command-line flags `--interface`, `--listen`, `--data` and `--monitor` override the file.
 
 ## 8. Run it as a service
 
-- **Linux (systemd):** [`deploy/systemd/wavetrack.service`](deploy/systemd/wavetrack.service) runs WaveTrack as an unprivileged user with only the two capabilities capture needs. The steps are at the top of the file.
+- **Linux (systemd):** [`deploy/systemd/wavetrack.service`](deploy/systemd/wavetrack.service) runs WaveTrack as an unprivileged user with only the two capabilities capture needs, no access to home directories, kernel settings or other network families, and a private umask. The steps are at the top of the file.
 - **macOS (launchd):** [`deploy/launchd/com.lucasrafaldini.wavetrack.plist`](deploy/launchd/com.lucasrafaldini.wavetrack.plist) starts it at boot.
 
 A Raspberry Pi on the office network is plenty.
@@ -228,12 +277,39 @@ packets ─▶ capture ─▶ sightings ─▶ presence tracker ─▶ visits (S
 
 The design decisions behind it (why visits instead of events, why departures are back-dated, how invites are made race-free) are in [docs/architecture.md](docs/architecture.md).
 
-## 10. API
+## 10. Security
+
+WaveTrack holds personal data and runs with packet-capture rights, so it was reviewed as such. The [security review](docs/security.md) has the threat model, every control, the findings of the 3.1 review and what was done about each, and the risks accepted on purpose. In short:
+
+- **Sign-in:** a 160-bit admin token stored hashed; `HttpOnly`, `SameSite=Strict` sessions; 10 attempts a minute per address.
+- **Requests:** same-origin JSON only; strict Content Security Policy and cross-origin isolation headers; bounded timeouts and sizes.
+- **Transport:** HTTPS with HSTS when `tls:` is configured. Use it whenever the office Wi-Fi is shared.
+- **Data:** a database only its owner can read; strangers' devices never stored; retention for visits and audit entries.
+- **Accountability:** an audit log of every administrative action.
+- **Supply chain:** five direct dependencies, abandoned ones replaced by their maintained successors; `govulncheck` and `staticcheck` in CI.
+
+To report a vulnerability, see [SECURITY.md](SECURITY.md).
+
+## 11. Performance
+
+Measured over an office of 100 people with a year of history (details and method in [docs/benchmarks.md](docs/benchmarks.md)):
+
+| | 3.0 | 3.1 |
+| --- | ---: | ---: |
+| Dashboard refresh (`/api/now`) | 5.8 ms | **0.42 ms** |
+| Ten dashboards refreshing at once, per request | 6.3 ms | **0.16 ms** |
+| Today's visits, with a year of history | 5.6 ms | **0.10 ms** |
+| Full-year CSV export | 152 ms | 157 ms |
+
+Reads no longer scan the history and no longer wait for each other. Reproduce with `make bench`.
+
+## 12. API
 
 Everything the dashboard shows comes from a JSON API under `/api`, authenticated by the same session cookie.
 
 | Endpoint | Purpose |
 | --- | --- |
+| `GET /api/status` | What is being captured, version, people in |
 | `GET /api/now` | People with presence, today's totals and events |
 | `GET /api/timeline?date=YYYY-MM-DD` | A day's stays per person |
 | `GET /api/history?days=7` | Daily totals, up to 31 days |
@@ -242,26 +318,30 @@ Everything the dashboard shows comes from a JSON API under `/api`, authenticated
 | `GET, POST /api/people` · `PATCH, DELETE /api/people/{id}` | Manage people (`DELETE ?mode=archive\|erase`) |
 | `POST /api/people/{id}/devices` · `DELETE /api/devices/{mac}` | Manage devices |
 | `POST /api/invites` | Create a QR invite |
+| `GET /api/audit?action=person.&before=ID&limit=100` | Audit entries, newest first (`action` takes an exact action or a prefix ending in `.`) |
+| `GET /api/audit.csv` | The whole audit log as CSV |
 
-## 11. Upgrading from 2.x
+## 13. Upgrading from 2.x
 
 Version 3 is a rewrite with a new database layout. Import your people and history once:
 
 ```bash
-./wavetrack import-v2 data/wavetrack.db --data data-v3
-./wavetrack --data data-v3
+wavetrack import-v2 data/wavetrack.db --data data-v3
+wavetrack --data data-v3
 ```
 
 Arrivals are paired with the following departure; arrivals without one are skipped, because 2.x recorded departures unreliably. See the [changelog](CHANGELOG.md) for everything that changed.
 
-## 12. Development
+## 14. Development
 
 ```bash
 make test     # Go tests with the race detector, plus a syntax check of the dashboard scripts
-make lint     # go vet and gofmt
+make lint     # go vet, gofmt and staticcheck
+make audit    # govulncheck: known vulnerabilities in the code paths WaveTrack calls
+make bench    # every benchmark, six runs, into bench.txt
 make demo     # build and run the demo
 ```
 
-The dashboard is plain HTML, CSS and JavaScript in [`web/`](web), compiled into the binary; there is no build step. Documentation screenshots are generated from the demo with `swift scripts/screenshot.swift` (macOS).
+The dashboard is plain HTML, CSS and JavaScript in [`web/`](web), compiled into the binary; there is no build step. Themes are sets of CSS custom properties at the top and bottom of [`app.css`](web/assets/app.css). Documentation screenshots are generated from the demo with `swift scripts/screenshot.swift` (macOS), which takes a theme per shot, e.g. `audit=/audit:classic`.
 
 MIT License · Lucas Rafaldini

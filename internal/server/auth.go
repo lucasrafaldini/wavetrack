@@ -71,11 +71,12 @@ func (s *Server) signedIn(r *http.Request) bool {
 	return err == nil && ok
 }
 
-func (s *Server) startSession(w http.ResponseWriter, r *http.Request) error {
+// startSession signs the browser in and returns the session token it was given.
+func (s *Server) startSession(w http.ResponseWriter, r *http.Request) (string, error) {
 	token := NewToken("")
 	now := s.clock()
 	if err := s.store.CreateSession(Hash(token), now, now.Add(sessionLifetime)); err != nil {
-		return err
+		return "", err
 	}
 	http.SetCookie(w, &http.Cookie{
 		Name:     sessionCookie,
@@ -86,7 +87,7 @@ func (s *Server) startSession(w http.ResponseWriter, r *http.Request) error {
 		Secure:   r.TLS != nil,
 		SameSite: http.SameSiteStrictMode,
 	})
-	return nil
+	return token, nil
 }
 
 func (s *Server) endSession(w http.ResponseWriter, r *http.Request) {
@@ -131,6 +132,11 @@ func securityHeaders(next http.Handler) http.Handler {
 		h.Set("X-Content-Type-Options", "nosniff")
 		h.Set("Referrer-Policy", "no-referrer")
 		h.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=()")
+		h.Set("Cross-Origin-Opener-Policy", "same-origin")
+		h.Set("Cross-Origin-Resource-Policy", "same-origin")
+		if r.TLS != nil {
+			h.Set("Strict-Transport-Security", "max-age=31536000")
+		}
 		next.ServeHTTP(w, r)
 	})
 }

@@ -2,7 +2,9 @@ package store_test
 
 import (
 	"errors"
+	"os"
 	"path/filepath"
+	"runtime"
 	"sync"
 	"testing"
 	"time"
@@ -190,4 +192,99 @@ func TestOpenFileRejectsGarbage(t *testing.T) {
 		t.Fatal(err)
 	}
 	st.Close()
+}
+
+func TestAuditLogPagesNewestFirstAndFilters(t *testing.T) {
+	st := testutil.Store(t)
+	at := testutil.Day(9, 0)
+	for i, action := range []string{"session.sign_in", "person.create", "person.erase", "invite.create", "person.update"} {
+		if err := st.Audit(store.AuditEntry{At: at.Add(time.Duration(i) * time.Minute), Actor: "admin", IP: "192.168.1.5", Action: action, Target: "x"}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	page, err := st.AuditLog(0, 2, "")
+	if err != nil || len(page) != 2 || page[0].Action != "person.update" || page[1].Action != "invite.create" {
+		t.Fatalf("first page = %+v, %v", page, err)
+	}
+	next, _ := st.AuditLog(page[1].ID, 10, "")
+	if len(next) != 3 || next[0].Action != "person.erase" {
+		t.Fatalf("second page = %+v", next)
+	}
+	people, _ := st.AuditLog(0, 10, "person.")
+	if len(people) != 3 {
+		t.Fatalf("person. matched %d entries", len(people))
+	}
+	exact, _ := st.AuditLog(0, 10, "person.erase")
+	if len(exact) != 1 || exact[0].IP != "192.168.1.5" {
+		t.Fatalf("person.erase = %+v", exact)
+	}
+	if n, err := st.PurgeAuditBefore(at.Add(2 * time.Minute)); err != nil || n != 2 {
+		t.Fatalf("purged %d, %v", n, err)
+	}
+}
+
+func TestPurgeExpiredRemovesDeadSessionsAndInvites(t *testing.T) {
+	st := testutil.Store(t)
+	now := testutil.Day(9, 0)
+	st.CreateSession("old", now.Add(-48*time.Hour), now.Add(-time.Hour))
+	st.CreateSession("live", now, now.Add(time.Hour))
+	st.CreateInvite("expired", now.Add(-48*time.Hour), now.Add(-time.Hour))
+	st.CreateInvite("open", now, now.Add(time.Hour))
+	if err := st.PurgeExpired(now); err != nil {
+		t.Fatal(err)
+	}
+	if ok, _ := st.SessionValid("live", now); !ok {
+		t.Fatal("a live session was purged")
+	}
+	if ok, _ := st.InviteValid("open", now); !ok {
+		t.Fatal("an open invite was purged")
+	}
+	if ok, _ := st.SessionValid("old", now.Add(-2*time.Hour)); ok {
+		t.Fatal("an expired session survived")
+	}
+}
+
+func TestDatabaseIsPrivateToItsOwner(t *testing.T) {
+	dir := t.TempDir()
+	st, err := store.Open(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer st.Close()
+	info, err := os.Stat(filepath.Join(dir, "wavetrack.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if runtime.GOOS != "windows" && info.Mode().Perm() != 0o600 {
+		t.Fatalf("database mode = %v, want 0600", info.Mode().Perm())
+	}
+}
+
+func TestVisitsBetweenFindsLongAndOpenVisits(t *testing.T) {
+	st := testutil.Store(t)
+	now := testutil.Day(14, 0)
+	ids, _ := testutil.Office(t, st, 3, 60, now)
+	// A visit that started two days ago and is still going on (a laptop left on).
+	long := now.Add(-50 * time.Hour)
+	if err := st.InsertVisits([]store.Visit{{PersonID: ids[0], StartedAt: long, LastSeen: now}}); err != nil {
+		t.Fatal(err)
+	}
+	from := time.Date(now.Year(), now.Month(), now.Day(), 0, 0, 0, 0, now.Location())
+	visits, err := st.VisitsBetween(from, from.AddDate(0, 0, 1))
+	if err != nil {
+		t.Fatal(err)
+	}
+	found := false
+	for _, v := range visits {
+		if v.StartedAt.Before(from) && v.PersonID == ids[0] {
+			found = true
+		}
+		if end := v.LastSeen; v.EndedAt != nil && v.EndedAt.Before(from) || end.Before(from) {
+			t.Fatalf("visit outside the window: %+v", v)
+		}
+	}
+	// 3 people: a finished morning and an open afternoon visit each, plus the long one.
+	if !found || len(visits) != 7 {
+		t.Fatalf("got %d visits (long one found: %v)", len(visits), found)
+	}
 }

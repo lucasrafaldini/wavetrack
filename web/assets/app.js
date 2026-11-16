@@ -50,6 +50,8 @@ function toast(message) {
 // MARK: formatting
 
 const timeFmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit" });
+const secondsFmt = new Intl.DateTimeFormat(undefined, { hour: "2-digit", minute: "2-digit", second: "2-digit" });
+const stampFmt = new Intl.DateTimeFormat(undefined, { day: "2-digit", month: "short", hour: "2-digit", minute: "2-digit", second: "2-digit" });
 const dayFmt = new Intl.DateTimeFormat(undefined, { weekday: "long", day: "numeric", month: "long" });
 const shortDay = new Intl.DateTimeFormat(undefined, { weekday: "short" });
 
@@ -72,14 +74,18 @@ function ago(iso, now) {
 }
 
 function initials(name) {
-  const parts = name.trim().split(/\s+/);
+  const parts = name.trim().split(/\s+/).filter((w) => /^\p{L}/u.test(w));
   return ((parts[0]?.[0] || "") + (parts.length > 1 ? parts.at(-1)[0] : "")).toUpperCase();
 }
+
+// Avatar hues: teal, blue, steel, green, cyan, amber, rust and olive. A name always gets
+// the same one; purples and pinks are left out on purpose.
+const HUES = [174, 205, 214, 148, 190, 34, 16, 82];
 
 function hue(name) {
   let n = 0;
   for (const c of name) n = (n * 31 + c.codePointAt(0)) >>> 0;
-  return n % 360;
+  return HUES[n % HUES.length];
 }
 
 function avatar(name, { present = null, small = false } = {}) {
@@ -109,26 +115,23 @@ async function api(path, { method = "GET", body } = {}) {
 
 // MARK: theme
 
+const THEMES = ["light", "dark", "classic", "code", "contrast"];
+
 function storedTheme() {
   try { return localStorage.getItem("wavetrack-theme"); } catch { return null; }
 }
 
+// An empty theme follows the system's light or dark appearance.
 function applyTheme(theme) {
-  if (theme) document.documentElement.dataset.theme = theme;
+  const valid = THEMES.includes(theme) ? theme : "";
+  if (valid) document.documentElement.dataset.theme = valid;
   else delete document.documentElement.dataset.theme;
-  const dark = theme ? theme === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
-  const button = document.getElementById("theme");
-  button.replaceChildren(icon(dark ? "sun" : "moon"));
-  button.setAttribute("aria-label", dark ? "Switch to light theme" : "Switch to dark theme");
+  document.getElementById("theme").value = valid;
 }
 
-document.getElementById("theme").addEventListener("click", () => {
-  const dark = document.documentElement.dataset.theme
-    ? document.documentElement.dataset.theme === "dark"
-    : matchMedia("(prefers-color-scheme: dark)").matches;
-  const next = dark ? "light" : "dark";
-  try { localStorage.setItem("wavetrack-theme", next); } catch {}
-  applyTheme(next);
+document.getElementById("theme").addEventListener("change", (event) => {
+  try { localStorage.setItem("wavetrack-theme", event.target.value); } catch {}
+  applyTheme(event.target.value);
 });
 
 // MARK: sign in
@@ -157,6 +160,7 @@ document.getElementById("signout").addEventListener("click", async () => {
 
 function showSignIn() {
   clearInterval(refreshTimer);
+  clearInterval(statusTimer);
   document.getElementById("app").hidden = true;
   document.getElementById("signin").hidden = false;
   document.getElementById("token").focus();
@@ -164,7 +168,7 @@ function showSignIn() {
 
 // MARK: router
 
-const routes = { now: renderNow, timeline: renderTimeline, history: renderHistory, people: renderPeople, nearby: renderNearby };
+const routes = { now: renderNow, timeline: renderTimeline, history: renderHistory, people: renderPeople, nearby: renderNearby, audit: renderAudit };
 
 function currentRoute() {
   const [name, ...rest] = location.hash.replace(/^#\/?/, "").split("/");
@@ -191,13 +195,33 @@ function every(seconds, fn) {
   refreshTimer = setInterval(() => fn().catch((e) => { if (e instanceof Unauthorized) showSignIn(); }), seconds * 1000);
 }
 
+// The status bar: what WaveTrack is capturing, who's in, and when the page last refreshed.
 function updateStatus(data) {
   lastStatus = data;
-  const label = data.capture.kind === "demo"
-    ? "Demo office"
-    : `Listening on ${data.capture.interface} · ${data.capture.mode}`;
-  document.querySelector("#status .label").textContent = label;
-  document.getElementById("status").title = `WaveTrack ${data.version}`;
+  const capture = document.getElementById("sb-capture");
+  capture.querySelector(".label").textContent = data.capture.kind === "demo"
+    ? "Demo office · simulated capture"
+    : `Capturing on ${data.capture.interface} · ${data.capture.mode} mode`;
+  capture.querySelector(".pulse").classList.remove("off");
+  if (data.present !== undefined) {
+    document.getElementById("sb-presence").textContent = `${data.present} of ${data.people} in`;
+  }
+  document.getElementById("sb-version").textContent = `WaveTrack ${data.version}`;
+  if (data.now) document.getElementById("sb-updated").textContent = `Updated ${secondsFmt.format(new Date(data.now))}`;
+}
+
+function statusLost() {
+  const capture = document.getElementById("sb-capture");
+  capture.querySelector(".label").textContent = "Disconnected from WaveTrack";
+  capture.querySelector(".pulse").classList.add("off");
+}
+
+let statusTimer = null;
+function watchStatus() {
+  clearInterval(statusTimer);
+  const poll = () => api("/api/status").then(updateStatus).catch((e) => { if (!(e instanceof Unauthorized)) statusLost(); });
+  poll();
+  statusTimer = setInterval(poll, 30000);
 }
 
 function pageHead(title, subtitle, ...actions) {
@@ -211,7 +235,7 @@ function pageHead(title, subtitle, ...actions) {
 async function renderNow() {
   const draw = async () => {
     const data = await api("/api/now");
-    updateStatus(data);
+    updateStatus({ ...data, present: data.people.filter((p) => p.present).length, people: data.people.length });
     const now = new Date(data.now);
     const here = data.people.filter((p) => p.present);
     const away = data.people.filter((p) => !p.present);
@@ -633,6 +657,88 @@ function assignControl(device, people) {
   return select;
 }
 
+// MARK: Audit
+
+const AUDIT_ACTIONS = {
+  "session.sign_in": ["Signed in"],
+  "session.sign_in_failed": ["Failed sign-in", "warn"],
+  "session.sign_out": ["Signed out"],
+  "person.create": ["Added person"],
+  "person.update": ["Edited person"],
+  "person.archive": ["Anonymized person", "warn"],
+  "person.erase": ["Erased person", "danger"],
+  "device.add": ["Added device"],
+  "device.remove": ["Removed device"],
+  "invite.create": ["Created invite"],
+  "invite.redeem": ["Registered by invite"],
+  "export.csv": ["Exported attendance"],
+  "audit.export": ["Exported audit log"],
+  "token.reset": ["Reset admin token", "danger"],
+  "retention.visits": ["Deleted old visits"],
+};
+
+const AUDIT_GROUPS = [["", "All"], ["session.", "Sign-ins"], ["person.", "People"], ["device.", "Devices"], ["invite.", "Invites"], ["export.", "Exports"]];
+
+function auditActor(actor) {
+  if (actor.startsWith("admin:")) return h("span", { class: "actor" }, "Administrator", h("small", { text: `session ${actor.slice(6)}` }));
+  const names = { admin: "Administrator", invite: "Invite link", system: "WaveTrack", cli: "Command line", anonymous: "Not signed in" };
+  return h("span", { class: "actor", text: names[actor] || actor });
+}
+
+// Entries name people by number only; show the current name next to it when they still exist.
+function auditTarget(target, names) {
+  const match = /^person #(\d+)$/.exec(target);
+  if (!match) return target ? h("span", { class: target.includes(":") ? "mono" : null, text: target }) : h("span", { class: "faint", text: "—" });
+  const name = names.get(Number(match[1]));
+  return name ? h("span", {}, name, h("span", { class: "faint", text: ` · #${match[1]}` }))
+    : h("span", { class: "faint", text: `#${match[1]} · no longer listed` });
+}
+
+async function renderAudit(arg) {
+  const group = AUDIT_GROUPS.some(([key]) => key === arg) ? arg : "";
+  const query = (before) => `/api/audit?limit=100${group ? `&action=${encodeURIComponent(group)}` : ""}${before ? `&before=${before}` : ""}`;
+  const [{ entries, more }, { people }] = await Promise.all([api(query()), api("/api/people")]);
+  const names = new Map(people.map((p) => [p.id, p.name]));
+
+  const row = (e) => {
+    const [label, tone] = AUDIT_ACTIONS[e.action] || [e.action];
+    return h("tr", {},
+      h("td", { class: "when" }, h("time", { datetime: e.at, text: stampFmt.format(new Date(e.at)) })),
+      h("td", {}, auditActor(e.actor)),
+      h("td", {}, h("span", { class: `tag${tone ? " " + tone : ""}`, title: e.action, text: label })),
+      h("td", {}, auditTarget(e.target, names)),
+      h("td", { class: "faint", text: e.detail || "" }),
+      h("td", { class: "mono faint", text: e.ip || "" }));
+  };
+
+  const body = h("tbody", {}, entries.map(row));
+  let last = entries.at(-1)?.id;
+  const moreButton = h("button", { class: "button", type: "button", text: "Load older entries" });
+  const footer = h("div", { class: "more", hidden: !more });
+  footer.append(moreButton);
+  moreButton.addEventListener("click", async () => {
+    const page = await api(query(last));
+    body.append(...page.entries.map(row));
+    last = page.entries.at(-1)?.id;
+    footer.hidden = !page.more;
+  });
+
+  const filters = h("div", { class: "segmented", role: "group", "aria-label": "Show" },
+    AUDIT_GROUPS.map(([key, label]) => h("button", { type: "button", "aria-pressed": String(key === group), onclick: () => { location.hash = `#/audit/${key}`; }, text: label })));
+
+  view.replaceChildren(
+    pageHead("Audit log", "Every administrative action: who did it, from where and when. People appear by number, so erasing someone leaves no trace of them here.",
+      filters,
+      h("a", { class: "button", href: "/api/audit.csv", download: "" }, icon("download"), "Export CSV")),
+    h("div", { class: "card" },
+      entries.length === 0
+        ? emptyState("shield", "Nothing recorded yet", "Sign-ins, changes to people and devices, invites and exports appear here.")
+        : h("div", { class: "scroll" }, h("table", { class: "table audit-table" },
+          h("thead", {}, h("tr", {}, ["Time", "Who", "Action", "Target", "Detail", "Address"].map((t) => h("th", { text: t })))),
+          body)),
+      footer));
+}
+
 // MARK: start
 
 async function start() {
@@ -643,14 +749,14 @@ async function start() {
   }
   document.getElementById("signin").hidden = true;
   document.getElementById("app").hidden = false;
-  api("/api/status").then(updateStatus).catch(() => {});
+  watchStatus();
   if (!location.hash || location.hash.startsWith("#token=")) history.replaceState(null, "", "#/now");
   route();
 }
 
-// ?theme=dark or ?theme=light pins a theme, which documentation screenshots use.
+// ?theme=<name> pins a theme, which documentation screenshots use.
 const pinnedTheme = new URLSearchParams(location.search).get("theme");
-applyTheme(["dark", "light"].includes(pinnedTheme) ? pinnedTheme : storedTheme());
+applyTheme(THEMES.includes(pinnedTheme) ? pinnedTheme : storedTheme());
 window.addEventListener("hashchange", route);
 
 // A sign-in link carries the token in the fragment, which never reaches server logs.

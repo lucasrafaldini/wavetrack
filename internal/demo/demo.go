@@ -111,14 +111,21 @@ func clamp(v, lo, hi float64) float64 {
 	return v
 }
 
-// Clock returns a clock for the demo. Outside office hours it is shifted to 14:20 today,
-// so the dashboard always shows a lively office.
+// Clock returns a clock for the demo. Outside office hours it is shifted to 14:20, and on
+// weekends to the Friday before, so the dashboard always shows a lively office.
 func Clock(real func() time.Time) func() time.Time {
 	now := real()
-	if h := now.Hour(); h >= 9 && h < 18 {
+	weekend := 0
+	switch now.Weekday() {
+	case time.Saturday:
+		weekend = 1
+	case time.Sunday:
+		weekend = 2
+	}
+	if h := now.Hour(); weekend == 0 && h >= 9 && h < 18 {
 		return real
 	}
-	target := time.Date(now.Year(), now.Month(), now.Day(), 14, 20, 0, 0, now.Location())
+	target := time.Date(now.Year(), now.Month(), now.Day()-weekend, 14, 20, 0, 0, now.Location())
 	offset := target.Sub(now)
 	return func() time.Time { return real().Add(offset) }
 }

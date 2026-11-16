@@ -60,3 +60,4 @@ temp/
 
 # WaveTrack specific
 .wavetrack/
+bench.txt

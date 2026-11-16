@@ -26,6 +26,36 @@ jobs:
         run: go mod tidy && git diff --exit-code go.mod go.sum
       - name: JavaScript syntax
         run: node --check web/assets/app.js && node --check web/assets/join.js
+      - name: staticcheck
+        run: go run honnef.co/go/tools/cmd/staticcheck@latest ./...
+      - name: Install script
+        run: sh -n scripts/install.sh
+
+  security:
+    name: Vulnerabilities
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install libpcap
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+      - name: govulncheck
+        run: go run golang.org/x/vuln/cmd/govulncheck@latest ./...
+
+  bench:
+    name: Benchmarks compile and run
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+      - name: Install libpcap
+        run: sudo apt-get update && sudo apt-get install -y libpcap-dev
+      - name: One iteration of every benchmark
+        run: go test -run '^$' -bench . -benchtime 1x ./...
 
   test:
     name: Test (${{ matrix.os }})
@@ -70,3 +100,7 @@ jobs:
           curl -sf -c jar -H 'Content-Type: application/json' -d "{\"token\":\"$token\"}" http://127.0.0.1:8099/api/login
           curl -sf -b jar http://127.0.0.1:8099/api/now | python3 -c 'import json,sys; d=json.load(sys.stdin); assert len(d["people"]) == 12, d; print(sum(p["present"] for p in d["people"]), "of 12 in")'
           curl -sf -b jar 'http://127.0.0.1:8099/api/history?days=7' | python3 -c 'import json,sys; d=json.load(sys.stdin); assert len(d["dates"]) == 7'
+          curl -sf -b jar http://127.0.0.1:8099/api/audit | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["entries"][0]["action"] == "session.sign_in", d'
+          curl -sf -b jar http://127.0.0.1:8099/api/status | python3 -c 'import json,sys; d=json.load(sys.stdin); assert d["people"] == 12, d'
+          for i in $(seq 1 12); do curl -s -o /dev/null -H 'Content-Type: application/json' -d '{"token":"wt_wrong"}' http://127.0.0.1:8099/api/login; done
+          test "$(curl -s -o /dev/null -w '%{http_code}' -H 'Content-Type: application/json' -d '{"token":"wt_wrong"}' http://127.0.0.1:8099/api/login)" = 429

@@ -9,6 +9,7 @@ import (
 	"net"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -20,8 +21,12 @@ var (
 	ErrDeviceTaken = errors.New("device already belongs to someone")
 )
 
+// Store writes through one connection, which serializes writers and rules out
+// SQLITE_BUSY, and reads through a pool: in WAL mode readers never wait for the writer,
+// so many dashboards refreshing at once are served in parallel.
 type Store struct {
-	db *sql.DB
+	db  *sql.DB // writes, transactions and migrations
+	rdb *sql.DB // reads
 }
 
 type Person struct {
@@ -61,22 +66,38 @@ func Open(dir string) (*Store, error) {
 }
 
 func OpenFile(path string) (*Store, error) {
-	dsn := "file:" + path + "?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000&_txlock=immediate"
-	db, err := sql.Open("sqlite3", dsn)
+	// The database holds who was where and when: readable by its owner only. SQLite
+	// gives the -wal and -shm files the same permissions as the database.
+	if f, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0o600); err == nil {
+		f.Close()
+		_ = os.Chmod(path, 0o600)
+	}
+	// synchronous=NORMAL is the recommended setting in WAL mode: a power cut can lose the
+	// last commits but never corrupts the database, and commits skip a sync.
+	common := "file:" + path + "?_foreign_keys=on&_journal_mode=WAL&_busy_timeout=5000&_synchronous=NORMAL"
+	db, err := sql.Open("sqlite3", common+"&_txlock=immediate")
 	if err != nil {
 		return nil, err
 	}
-	// One connection serializes writers; the workload is tiny and this rules out SQLITE_BUSY.
 	db.SetMaxOpenConns(1)
 	s := &Store{db: db}
 	if err := s.migrate(); err != nil {
 		db.Close()
 		return nil, fmt.Errorf("migrating %s: %w", path, err)
 	}
+	rdb, err := sql.Open("sqlite3", common+"&_query_only=true")
+	if err != nil {
+		db.Close()
+		return nil, err
+	}
+	readers := max(4, runtime.NumCPU())
+	rdb.SetMaxOpenConns(readers)
+	rdb.SetMaxIdleConns(readers)
+	s.rdb = rdb
 	return s, nil
 }
 
-func (s *Store) Close() error { return s.db.Close() }
+func (s *Store) Close() error { return errors.Join(s.rdb.Close(), s.db.Close()) }
 
 func (s *Store) migrate() error {
 	var version int
@@ -126,7 +147,7 @@ func NormalizeMAC(raw string) (string, error) {
 
 func (s *Store) Meta(key string) (string, error) {
 	var value string
-	err := s.db.QueryRow(`SELECT value FROM meta WHERE key = ?`, key).Scan(&value)
+	err := s.rdb.QueryRow(`SELECT value FROM meta WHERE key = ?`, key).Scan(&value)
 	if errors.Is(err, sql.ErrNoRows) {
 		return "", ErrNotFound
 	}
@@ -181,7 +202,7 @@ func (s *Store) People(includeArchived bool) ([]Person, error) {
 }
 
 func (s *Store) queryPeople(where string, args ...any) ([]Person, error) {
-	rows, err := s.db.Query(`SELECT p.id, p.name, p.team, p.created_at, p.consented_at, p.archived_at
+	rows, err := s.rdb.Query(`SELECT p.id, p.name, p.team, p.created_at, p.consented_at, p.archived_at
 		FROM people p `+where+` ORDER BY p.name COLLATE NOCASE`, args...)
 	if err != nil {
 		return nil, err
@@ -271,7 +292,7 @@ func (s *Store) RemoveDevice(mac string) error {
 }
 
 func (s *Store) Devices() ([]Device, error) {
-	rows, err := s.db.Query(`SELECT mac, person_id, label, vendor, kind, added_at, last_seen FROM devices ORDER BY added_at`)
+	rows, err := s.rdb.Query(`SELECT mac, person_id, label, vendor, kind, added_at, last_seen FROM devices ORDER BY added_at`)
 	if err != nil {
 		return nil, err
 	}
@@ -320,16 +341,37 @@ func (s *Store) OpenVisits() ([]Visit, error) {
 	return s.queryVisits(`WHERE ended_at IS NULL`)
 }
 
-// VisitsBetween returns visits overlapping [from, to).
+// VisitsBetween returns visits overlapping [from, to): those that started before `to` and
+// were still going on at `from`.
+//
+// Left to itself, SQLite filters on visits_started, which reads the whole history before
+// `to`: a year of it on every dashboard refresh. Instead, finished visits are found by
+// their end (visits_ended) and open ones through the partial index of open visits, so
+// the cost follows the size of the window, not of the history.
 func (s *Store) VisitsBetween(from, to time.Time) ([]Visit, error) {
-	return s.queryVisits(`WHERE started_at < ? AND COALESCE(ended_at, last_seen) >= ?`, unix(to), unix(from))
-}
-
-func (s *Store) queryVisits(where string, args ...any) ([]Visit, error) {
-	rows, err := s.db.Query(`SELECT id, person_id, started_at, last_seen, ended_at FROM visits `+where+` ORDER BY started_at`, args...)
+	f, t := unix(from), unix(to)
+	rows, err := s.rdb.Query(`
+		SELECT id, person_id, started_at, last_seen, ended_at FROM visits INDEXED BY visits_ended
+		 WHERE ended_at >= ? AND started_at < ?
+		UNION ALL
+		SELECT id, person_id, started_at, last_seen, ended_at FROM visits INDEXED BY visits_open
+		 WHERE ended_at IS NULL AND last_seen >= ? AND started_at < ?
+		ORDER BY started_at`, f, t, f, t)
 	if err != nil {
 		return nil, err
 	}
+	return scanVisits(rows)
+}
+
+func (s *Store) queryVisits(where string, args ...any) ([]Visit, error) {
+	rows, err := s.rdb.Query(`SELECT id, person_id, started_at, last_seen, ended_at FROM visits `+where+` ORDER BY started_at`, args...)
+	if err != nil {
+		return nil, err
+	}
+	return scanVisits(rows)
+}
+
+func scanVisits(rows *sql.Rows) ([]Visit, error) {
 	defer rows.Close()
 	var visits []Visit
 	for rows.Next() {
@@ -354,6 +396,27 @@ func (s *Store) InsertVisit(personID int64, start, end time.Time) error {
 	return err
 }
 
+// InsertVisits writes many visits in one transaction. An open visit has a nil EndedAt.
+func (s *Store) InsertVisits(visits []Visit) error {
+	return s.tx(func(tx *sql.Tx) error {
+		stmt, err := tx.Prepare(`INSERT INTO visits(person_id, started_at, last_seen, ended_at) VALUES(?, ?, ?, ?)`)
+		if err != nil {
+			return err
+		}
+		defer stmt.Close()
+		for _, v := range visits {
+			var ended any
+			if v.EndedAt != nil {
+				ended = unix(*v.EndedAt)
+			}
+			if _, err := stmt.Exec(v.PersonID, unix(v.StartedAt), unix(v.LastSeen), ended); err != nil {
+				return err
+			}
+		}
+		return nil
+	})
+}
+
 // PurgeVisitsBefore deletes finished visits that ended before cutoff.
 func (s *Store) PurgeVisitsBefore(cutoff time.Time) (int64, error) {
 	res, err := s.db.Exec(`DELETE FROM visits WHERE ended_at IS NOT NULL AND ended_at < ?`, unix(cutoff))
@@ -372,7 +435,7 @@ func (s *Store) CreateInvite(tokenHash string, now, expires time.Time) error {
 
 func (s *Store) InviteValid(tokenHash string, now time.Time) (bool, error) {
 	var n int
-	err := s.db.QueryRow(`SELECT COUNT(*) FROM invites WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?`,
+	err := s.rdb.QueryRow(`SELECT COUNT(*) FROM invites WHERE token_hash = ? AND used_at IS NULL AND expires_at > ?`,
 		tokenHash, unix(now)).Scan(&n)
 	return n == 1, err
 }
@@ -424,8 +487,19 @@ func (s *Store) CreateSession(tokenHash string, now, expires time.Time) error {
 
 func (s *Store) SessionValid(tokenHash string, now time.Time) (bool, error) {
 	var n int
-	err := s.db.QueryRow(`SELECT COUNT(*) FROM sessions WHERE token_hash = ? AND expires_at > ?`, tokenHash, unix(now)).Scan(&n)
+	err := s.rdb.QueryRow(`SELECT COUNT(*) FROM sessions WHERE token_hash = ? AND expires_at > ?`, tokenHash, unix(now)).Scan(&n)
 	return n == 1, err
+}
+
+// PurgeExpired deletes sessions and invites that can no longer be used.
+func (s *Store) PurgeExpired(now time.Time) error {
+	return s.tx(func(tx *sql.Tx) error {
+		if _, err := tx.Exec(`DELETE FROM sessions WHERE expires_at <= ?`, unix(now)); err != nil {
+			return err
+		}
+		_, err := tx.Exec(`DELETE FROM invites WHERE expires_at <= ? OR used_at IS NOT NULL`, unix(now))
+		return err
+	})
 }
 
 func (s *Store) DeleteSession(tokenHash string) error {
@@ -460,4 +534,68 @@ func expectOne(res sql.Result, err error) error {
 		return ErrNotFound
 	}
 	return nil
+}
+
+// MARK: audit
+
+// AuditEntry records one administrative action: who did what, to whom, from where.
+type AuditEntry struct {
+	ID     int64     `json:"id"`
+	At     time.Time `json:"at"`
+	Actor  string    `json:"actor"`
+	IP     string    `json:"ip"`
+	Action string    `json:"action"`
+	Target string    `json:"target"`
+	Detail string    `json:"detail"`
+}
+
+func (s *Store) Audit(e AuditEntry) error {
+	_, err := s.db.Exec(`INSERT INTO audit(at, actor, ip, action, target, detail) VALUES(?, ?, ?, ?, ?, ?)`,
+		unix(e.At), e.Actor, e.IP, e.Action, e.Target, e.Detail)
+	return err
+}
+
+// AuditLog returns entries newest first. A beforeID of 0 starts at the newest; pass the
+// last ID of a page to get the next one. An action ending in "." matches a whole group,
+// e.g. "person." for every change to people.
+func (s *Store) AuditLog(beforeID int64, limit int, action string) ([]AuditEntry, error) {
+	where, args := []string{}, []any{}
+	if beforeID > 0 {
+		where, args = append(where, "id < ?"), append(args, beforeID)
+	}
+	switch {
+	case strings.HasSuffix(action, "."):
+		where, args = append(where, "action LIKE ? ESCAPE '\\'"), append(args, strings.ReplaceAll(action, "_", `\_`)+"%")
+	case action != "":
+		where, args = append(where, "action = ?"), append(args, action)
+	}
+	query := `SELECT id, at, actor, ip, action, target, detail FROM audit`
+	if len(where) > 0 {
+		query += " WHERE " + strings.Join(where, " AND ")
+	}
+	rows, err := s.rdb.Query(query+` ORDER BY id DESC LIMIT ?`, append(args, limit)...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	entries := []AuditEntry{}
+	for rows.Next() {
+		var e AuditEntry
+		var at int64
+		if err := rows.Scan(&e.ID, &at, &e.Actor, &e.IP, &e.Action, &e.Target, &e.Detail); err != nil {
+			return nil, err
+		}
+		e.At = time.Unix(at, 0)
+		entries = append(entries, e)
+	}
+	return entries, rows.Err()
+}
+
+// PurgeAuditBefore deletes audit entries older than cutoff.
+func (s *Store) PurgeAuditBefore(cutoff time.Time) (int64, error) {
+	res, err := s.db.Exec(`DELETE FROM audit WHERE at < ?`, unix(cutoff))
+	if err != nil {
+		return 0, err
+	}
+	return res.RowsAffected()
 }

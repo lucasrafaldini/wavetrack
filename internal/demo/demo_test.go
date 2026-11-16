@@ -60,3 +60,15 @@ func TestClockShiftsOnlyOutsideOfficeHours(t *testing.T) {
 		t.Fatalf("daytime clock shifted to %v", got)
 	}
 }
+
+func TestClockMovesWeekendsToFridayAfternoon(t *testing.T) {
+	sunday := time.Date(2026, 11, 8, 2, 20, 0, 0, time.Local)
+	got := Clock(func() time.Time { return sunday })()
+	if got.Weekday() != time.Friday || got.Hour() != 14 || got.Minute() != 20 || got.Day() != 6 {
+		t.Fatalf("Sunday became %v", got)
+	}
+	tuesday := time.Date(2026, 11, 10, 11, 0, 0, 0, time.Local)
+	if got := Clock(func() time.Time { return tuesday })(); !got.Equal(tuesday) {
+		t.Fatalf("office hours were shifted to %v", got)
+	}
+}

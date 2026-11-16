@@ -1,0 +1,143 @@
+goos: darwin
+goarch: arm64
+pkg: github.com/lucasrafaldini/wavetrack/internal/capture
+cpu: Apple M4
+BenchmarkSightingEthernet-10    	 7053968	       167.2 ns/op	 358.95 MB/s	     738 B/op	       7 allocs/op
+BenchmarkSightingEthernet-10    	 7212400	       165.8 ns/op	 361.86 MB/s	     738 B/op	       7 allocs/op
+BenchmarkSightingEthernet-10    	 7182975	       167.0 ns/op	 359.20 MB/s	     738 B/op	       7 allocs/op
+BenchmarkSightingEthernet-10    	 7237326	       166.1 ns/op	 361.32 MB/s	     738 B/op	       7 allocs/op
+BenchmarkSightingEthernet-10    	 7249190	       165.8 ns/op	 361.92 MB/s	     738 B/op	       7 allocs/op
+BenchmarkSightingEthernet-10    	 7135910	       166.7 ns/op	 359.86 MB/s	     738 B/op	       7 allocs/op
+BenchmarkSightingMonitor-10     	 5441575	       218.5 ns/op	 160.19 MB/s	     908 B/op	       9 allocs/op
+BenchmarkSightingMonitor-10     	 5457105	       220.6 ns/op	 158.68 MB/s	     908 B/op	       9 allocs/op
+BenchmarkSightingMonitor-10     	 5465690	       218.4 ns/op	 160.29 MB/s	     908 B/op	       9 allocs/op
+BenchmarkSightingMonitor-10     	 5517817	       218.9 ns/op	 159.92 MB/s	     908 B/op	       9 allocs/op
+BenchmarkSightingMonitor-10     	 5308976	       225.4 ns/op	 155.31 MB/s	     908 B/op	       9 allocs/op
+BenchmarkSightingMonitor-10     	 5512658	       218.1 ns/op	 160.48 MB/s	     908 B/op	       9 allocs/op
+PASS
+ok  	github.com/lucasrafaldini/wavetrack/internal/capture	14.436s
+PASS
+ok  	github.com/lucasrafaldini/wavetrack/internal/config	0.081s
+PASS
+ok  	github.com/lucasrafaldini/wavetrack/internal/demo	0.268s
+PASS
+ok  	github.com/lucasrafaldini/wavetrack/internal/importer	0.234s
+PASS
+ok  	github.com/lucasrafaldini/wavetrack/internal/netinfo	0.047s
+PASS
+ok  	github.com/lucasrafaldini/wavetrack/internal/oui	0.055s
+goos: darwin
+goarch: arm64
+pkg: github.com/lucasrafaldini/wavetrack/internal/presence
+cpu: Apple M4
+BenchmarkObserveRegistered-10    	   65006	     17211 ns/op	     696 B/op	      18 allocs/op
+BenchmarkObserveRegistered-10    	   68455	     17037 ns/op	     696 B/op	      18 allocs/op
+BenchmarkObserveRegistered-10    	   69057	     17184 ns/op	     696 B/op	      18 allocs/op
+BenchmarkObserveRegistered-10    	   67292	     17972 ns/op	     696 B/op	      18 allocs/op
+BenchmarkObserveRegistered-10    	   68575	     17284 ns/op	     696 B/op	      18 allocs/op
+BenchmarkObserveRegistered-10    	   68914	     17238 ns/op	     696 B/op	      18 allocs/op
+BenchmarkObserveNearby-10        	28975941	        41.19 ns/op	      24 B/op	       1 allocs/op
+BenchmarkObserveNearby-10        	28874467	        41.38 ns/op	      24 B/op	       1 allocs/op
+BenchmarkObserveNearby-10        	29133489	        41.18 ns/op	      24 B/op	       1 allocs/op
+BenchmarkObserveNearby-10        	28887528	        64.92 ns/op	      24 B/op	       1 allocs/op
+BenchmarkObserveNearby-10        	25114387	        44.45 ns/op	      24 B/op	       1 allocs/op
+BenchmarkObserveNearby-10        	26766222	        44.71 ns/op	      24 B/op	       1 allocs/op
+BenchmarkSnapshot-10             	  140847	      7788 ns/op	   16368 B/op	      12 allocs/op
+BenchmarkSnapshot-10             	  154695	      7785 ns/op	   16368 B/op	      12 allocs/op
+BenchmarkSnapshot-10             	  147734	      8312 ns/op	   16368 B/op	      12 allocs/op
+BenchmarkSnapshot-10             	  136704	      7810 ns/op	   16368 B/op	      12 allocs/op
+BenchmarkSnapshot-10             	  156226	      7719 ns/op	   16368 B/op	      12 allocs/op
+BenchmarkSnapshot-10             	  152924	      7801 ns/op	   16368 B/op	      12 allocs/op
+PASS
+ok  	github.com/lucasrafaldini/wavetrack/internal/presence	22.298s
+goos: darwin
+goarch: arm64
+pkg: github.com/lucasrafaldini/wavetrack/internal/report
+cpu: Apple M4
+BenchmarkDailyMonth-10     	     705	   1672055 ns/op	 1640094 B/op	   24181 allocs/op
+BenchmarkDailyMonth-10     	     715	   1667880 ns/op	 1640076 B/op	   24181 allocs/op
+BenchmarkDailyMonth-10     	     720	   1668152 ns/op	 1640083 B/op	   24181 allocs/op
+BenchmarkDailyMonth-10     	     726	   1659624 ns/op	 1640076 B/op	   24181 allocs/op
+BenchmarkDailyMonth-10     	     721	   1659572 ns/op	 1640076 B/op	   24181 allocs/op
+BenchmarkDailyMonth-10     	     729	   1654088 ns/op	 1640075 B/op	   24181 allocs/op
+BenchmarkTimelineDay-10    	   68214	     17681 ns/op	   58168 B/op	     711 allocs/op
+BenchmarkTimelineDay-10    	   67320	     17638 ns/op	   58168 B/op	     711 allocs/op
+BenchmarkTimelineDay-10    	   69579	     17472 ns/op	   58168 B/op	     711 allocs/op
+BenchmarkTimelineDay-10    	   69003	     19642 ns/op	   58168 B/op	     711 allocs/op
+BenchmarkTimelineDay-10    	   68334	     17645 ns/op	   58168 B/op	     711 allocs/op
+BenchmarkTimelineDay-10    	   67766	     17547 ns/op	   58168 B/op	     711 allocs/op
+PASS
+ok  	github.com/lucasrafaldini/wavetrack/internal/report	14.767s
+goos: darwin
+goarch: arm64
+pkg: github.com/lucasrafaldini/wavetrack/internal/server
+cpu: Apple M4
+BenchmarkAPI//api/now-10      	    2854	    415942 ns/op	  478346 B/op	    4987 allocs/op
+BenchmarkAPI//api/now-10      	    2898	    414593 ns/op	  479370 B/op	    4987 allocs/op
+BenchmarkAPI//api/now-10      	    2890	    422585 ns/op	  479410 B/op	    4987 allocs/op
+BenchmarkAPI//api/now-10      	    2887	    416284 ns/op	  479278 B/op	    4987 allocs/op
+BenchmarkAPI//api/now-10      	    2922	    415973 ns/op	  479324 B/op	    4987 allocs/op
+BenchmarkAPI//api/now-10      	    2880	    414783 ns/op	  479383 B/op	    4987 allocs/op
+BenchmarkAPI//api/timeline-10 	    3816	    324021 ns/op	  322354 B/op	    4318 allocs/op
+BenchmarkAPI//api/timeline-10 	    3703	    325096 ns/op	  322855 B/op	    4318 allocs/op
+BenchmarkAPI//api/timeline-10 	    3712	    324010 ns/op	  322995 B/op	    4318 allocs/op
+BenchmarkAPI//api/timeline-10 	    3684	    326471 ns/op	  322474 B/op	    4318 allocs/op
+BenchmarkAPI//api/timeline-10 	    3691	    326323 ns/op	  322747 B/op	    4318 allocs/op
+BenchmarkAPI//api/timeline-10 	    3700	    326458 ns/op	  322831 B/op	    4318 allocs/op
+BenchmarkAPI//api/history?days=7-10         	    1143	   1050407 ns/op	  982038 B/op	   15397 allocs/op
+BenchmarkAPI//api/history?days=7-10         	    1141	   1055061 ns/op	  981598 B/op	   15397 allocs/op
+BenchmarkAPI//api/history?days=7-10         	    1147	   1050186 ns/op	  982157 B/op	   15397 allocs/op
+BenchmarkAPI//api/history?days=7-10         	    1141	   1054956 ns/op	  983113 B/op	   15397 allocs/op
+BenchmarkAPI//api/history?days=7-10         	    1142	   1051460 ns/op	  981565 B/op	   15397 allocs/op
+BenchmarkAPI//api/history?days=7-10         	    1134	   1073882 ns/op	  981826 B/op	   15397 allocs/op
+BenchmarkAPI//api/history?days=31-10        	     240	   4987960 ns/op	 5299540 B/op	   63057 allocs/op
+BenchmarkAPI//api/history?days=31-10        	     240	   4977289 ns/op	 5300736 B/op	   63057 allocs/op
+BenchmarkAPI//api/history?days=31-10        	     240	   4978447 ns/op	 5307105 B/op	   63057 allocs/op
+BenchmarkAPI//api/history?days=31-10        	     240	   4979629 ns/op	 5287876 B/op	   63056 allocs/op
+BenchmarkAPI//api/history?days=31-10        	     240	   4993338 ns/op	 5429190 B/op	   63060 allocs/op
+BenchmarkAPI//api/history?days=31-10        	     258	   4546284 ns/op	 5366034 B/op	   63059 allocs/op
+BenchmarkAPI//api/export.csv?days=366-10    	       7	 159079720 ns/op	52272793 B/op	  772659 allocs/op
+BenchmarkAPI//api/export.csv?days=366-10    	       7	 156553161 ns/op	52272874 B/op	  772659 allocs/op
+BenchmarkAPI//api/export.csv?days=366-10    	       7	 156278256 ns/op	52272804 B/op	  772659 allocs/op
+BenchmarkAPI//api/export.csv?days=366-10    	       7	 156338851 ns/op	52272842 B/op	  772659 allocs/op
+BenchmarkAPI//api/export.csv?days=366-10    	       7	 158191399 ns/op	52272881 B/op	  772659 allocs/op
+BenchmarkAPI//api/export.csv?days=366-10    	       7	 156731530 ns/op	52272806 B/op	  772659 allocs/op
+BenchmarkAPINowParallel-10                  	    7413	    156947 ns/op	  547753 B/op	    5067 allocs/op
+BenchmarkAPINowParallel-10                  	    7138	    153698 ns/op	  551506 B/op	    5070 allocs/op
+BenchmarkAPINowParallel-10                  	    7588	    154571 ns/op	  550222 B/op	    5066 allocs/op
+BenchmarkAPINowParallel-10                  	    7251	    152673 ns/op	  548415 B/op	    5069 allocs/op
+BenchmarkAPINowParallel-10                  	    7441	    155610 ns/op	  543383 B/op	    5066 allocs/op
+BenchmarkAPINowParallel-10                  	    7654	    186737 ns/op	  547998 B/op	    5065 allocs/op
+PASS
+ok  	github.com/lucasrafaldini/wavetrack/internal/server	51.752s
+goos: darwin
+goarch: arm64
+pkg: github.com/lucasrafaldini/wavetrack/internal/store
+cpu: Apple M4
+BenchmarkVisitsToday/history=30d-10         	   12230	     97963 ns/op	   74777 B/op	    1441 allocs/op
+BenchmarkVisitsToday/history=30d-10         	   12322	     97406 ns/op	   74776 B/op	    1441 allocs/op
+BenchmarkVisitsToday/history=30d-10         	   12056	     99683 ns/op	   74776 B/op	    1441 allocs/op
+BenchmarkVisitsToday/history=30d-10         	   10000	    101253 ns/op	   74777 B/op	    1441 allocs/op
+BenchmarkVisitsToday/history=30d-10         	   12196	     98242 ns/op	   74776 B/op	    1441 allocs/op
+BenchmarkVisitsToday/history=30d-10         	   12294	     97855 ns/op	   74776 B/op	    1441 allocs/op
+BenchmarkVisitsToday/history=365d-10        	   12046	     99583 ns/op	   74776 B/op	    1441 allocs/op
+BenchmarkVisitsToday/history=365d-10        	   12049	     99585 ns/op	   74776 B/op	    1441 allocs/op
+BenchmarkVisitsToday/history=365d-10        	   12008	     99807 ns/op	   74776 B/op	    1441 allocs/op
+BenchmarkVisitsToday/history=365d-10        	   12031	    100275 ns/op	   74776 B/op	    1441 allocs/op
+BenchmarkVisitsToday/history=365d-10        	   12063	     99346 ns/op	   74776 B/op	    1441 allocs/op
+BenchmarkVisitsToday/history=365d-10        	   12054	     99590 ns/op	   74776 B/op	    1441 allocs/op
+BenchmarkVisitsMonth-10                     	     520	   2301327 ns/op	 2165670 B/op	   36648 allocs/op
+BenchmarkVisitsMonth-10                     	     526	   2268706 ns/op	 2165670 B/op	   36648 allocs/op
+BenchmarkVisitsMonth-10                     	     525	   2303429 ns/op	 2165670 B/op	   36648 allocs/op
+BenchmarkVisitsMonth-10                     	     524	   2285838 ns/op	 2165672 B/op	   36648 allocs/op
+BenchmarkVisitsMonth-10                     	     525	   2279396 ns/op	 2165669 B/op	   36648 allocs/op
+BenchmarkVisitsMonth-10                     	     523	   2290880 ns/op	 2165671 B/op	   36648 allocs/op
+BenchmarkTouchVisit-10                      	  138842	      8307 ns/op	     328 B/op	       8 allocs/op
+BenchmarkTouchVisit-10                      	  139051	      8493 ns/op	     328 B/op	       8 allocs/op
+BenchmarkTouchVisit-10                      	  140068	      8385 ns/op	     328 B/op	       8 allocs/op
+BenchmarkTouchVisit-10                      	  141745	      8385 ns/op	     328 B/op	       8 allocs/op
+BenchmarkTouchVisit-10                      	  143901	      8303 ns/op	     328 B/op	       8 allocs/op
+BenchmarkTouchVisit-10                      	  140158	      8338 ns/op	     328 B/op	       8 allocs/op
+PASS
+ok  	github.com/lucasrafaldini/wavetrack/internal/store	29.925s
+?   	github.com/lucasrafaldini/wavetrack/internal/testutil	[no test files]

@@ -55,4 +55,24 @@ var migrations = []string{
 		expires_at INTEGER NOT NULL
 	);
 	`,
+
+	// 2: today's visits without scanning the whole history (see VisitsBetween). ended_at is
+	// written once per visit, so unlike last_seen it costs nothing on the tracker's updates.
+	`
+	CREATE INDEX visits_ended ON visits(ended_at);
+	`,
+
+	// 3: audit log of administrative actions
+	`
+	CREATE TABLE audit (
+		id     INTEGER PRIMARY KEY AUTOINCREMENT,
+		at     INTEGER NOT NULL,
+		actor  TEXT    NOT NULL,           -- "admin", "invite", "system" or "cli"
+		ip     TEXT    NOT NULL DEFAULT '',
+		action TEXT    NOT NULL,           -- e.g. "person.erase"
+		target TEXT    NOT NULL DEFAULT '', -- whom or what it was done to
+		detail TEXT    NOT NULL DEFAULT ''
+	);
+	CREATE INDEX audit_at ON audit(at);
+	`,
 }

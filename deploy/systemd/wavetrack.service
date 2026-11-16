@@ -1,7 +1,7 @@
 # Runs WaveTrack as an unprivileged user with only the capabilities packet capture needs.
 #
+#   curl -fsSL https://raw.githubusercontent.com/lucasrafaldini/wavetrack/main/scripts/install.sh | sudo sh -s -- --prefix /usr/local/bin
 #   sudo useradd --system --home /var/lib/wavetrack wavetrack
-#   sudo install -m 755 wavetrack /usr/local/bin/
 #   sudo install -D -m 644 config.example.yaml /etc/wavetrack/config.yaml
 #   sudo cp deploy/systemd/wavetrack.service /etc/systemd/system/
 #   sudo systemctl enable --now wavetrack
@@ -23,6 +23,23 @@ NoNewPrivileges=true
 ProtectSystem=strict
 ProtectHome=true
 PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectKernelLogs=true
+ProtectControlGroups=true
+ProtectClock=true
+ProtectHostname=true
+RestrictNamespaces=true
+RestrictRealtime=true
+RestrictSUIDSGID=true
+LockPersonality=true
+MemoryDenyWriteExecute=true
+SystemCallArchitectures=native
+# Capture needs AF_PACKET, interface discovery needs AF_NETLINK; nothing else is allowed.
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX AF_PACKET AF_NETLINK
+# The database is readable by the service user only.
+UMask=0077
 
 [Install]
 WantedBy=multi-user.target

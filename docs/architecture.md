@@ -1,6 +1,6 @@
 # WaveTrack architecture
 
-This document explains how WaveTrack 3 is put together and, mostly, why. Each decision lists the alternative it replaced, often the 2.x approach, and what went wrong with it.
+This document explains how WaveTrack 3 is put together and, mostly, why. Security has its own [review](security.md) and performance its own [measurements](benchmarks.md). Each decision lists the alternative it replaced, often the 2.x approach, and what went wrong with it.
 
 ## The pipeline
 
@@ -70,7 +70,7 @@ An office presence tool rarely needs user management, but it does need a door. T
 
 ### 10. One binary, no build step
 
-The dashboard is plain HTML, CSS and JavaScript compiled into the binary with `embed`. 2.x served files from a relative `web/` directory, so it only worked when started from the repository. There is no bundler and no framework: about 700 lines of JavaScript, a 28-icon SVG sprite and one stylesheet. Dynamic sizes go through the CSSOM (`style.setProperty`), which the CSP allows, rather than inline `style` attributes, which it blocks.
+The dashboard is plain HTML, CSS and JavaScript compiled into the binary with `embed`. 2.x served files from a relative `web/` directory, so it only worked when started from the repository. There is no bundler and no framework: about 800 lines of JavaScript, a 28-icon SVG sprite and one stylesheet with five themes. Dynamic sizes go through the CSSOM (`style.setProperty`), which the CSP allows, rather than inline `style` attributes, which it blocks.
 
 ### 11. A demo that is the same code path
 
@@ -80,14 +80,36 @@ The dashboard is plain HTML, CSS and JavaScript compiled into the binary with `e
 
 Removing a person offers **anonymize** (rename to "Former member #n", forget devices, keep hours) or **erase** (delete person, devices and visits via `ON DELETE CASCADE`). Retention deletes finished visits older than a configurable number of days. Consent timestamps are stored for self-registered people.
 
+### 13. Reads scale with the window, not with the history (3.1)
+
+Every dashboard refresh asks for today's visits. 3.0 filtered on `started_at`, so SQLite walked the whole history to find them: 5.6 ms with a year of data, growing every day. 3.1 finds finished visits by their end (`visits_ended`) and open ones through the partial index of open visits, in two branches of a `UNION ALL`: 0.1 ms, whatever the history. An index on `COALESCE(ended_at, last_seen)` was faster still, but `last_seen` changes on every tracker write and made that write 52% slower; `ended_at` is written once. Reads also moved to their own pool of connections, while writes keep a single one: WAL lets readers run alongside the writer, so ten dashboards no longer queue. The numbers are in [benchmarks.md](benchmarks.md).
+
+### 14. An audit log that forgets people on purpose (3.1)
+
+An office presence tool holds personal data, so "who erased this, and when?" needs an answer. Every administrative action is recorded with its actor (the browser session, an invite, the command line or WaveTrack itself), the client IP and its target. Targets are `person #12`, never a name, and devices keep only their manufacturer prefix and last octet. Erasing someone therefore removes them from the log too, while the record that the erasure happened stays. The log has its own retention, two years by default.
+
+### 15. Limits where anyone can knock (3.1)
+
+The sign-in, invite and registration endpoints are reachable without a session, from anyone on the network. A token bucket per client IP limits them (10 sign-ins, 30 invite checks or registrations a minute). It replaces 3.0's 400 ms sleep after a failed sign-in, which slowed nobody who sent attempts in parallel and held a goroutine per attempt. The client is the TCP peer: `X-Forwarded-For` is ignored, because any client can set it.
+
+### 16. Maintained dependencies only (3.1)
+
+`google/gopacket` was archived in 2020 and `gopkg.in/yaml.v3` was declared unmaintained; both moved to their maintained successors, `gopacket/gopacket` and `go.yaml.in/yaml/v3`. The new packet library models radiotap headers as one or more namespaces, as drivers with several antennas send them; WaveTrack takes the signal from the first namespace that reports one. SQLite stays on `mattn/go-sqlite3`: libpcap already requires cgo on Linux and macOS, so a pure-Go SQLite would not simplify the build, and it is slower. `govulncheck` runs in CI and the Go toolchain is pinned to a patched release.
+
+### 17. Themes are token sets, and presence has its own color (3.1)
+
+Every color, radius, font and bar height is a CSS custom property; a theme is a set of values plus, for the structural themes, a few rules for chrome. Presence uses its own token, `--here`, separate from `--accent`, which marks actions: in Classic the accent is navy (links, the default button) while presence stays teal, and in Code the accent is the editor's blue while presence is teal-green. That keeps "here" readable in every theme without repainting the charts.
+
 ## Design
 
-The dashboard's job is to answer "who's in?" at a glance, then get out of the way.
+The dashboard's job is to answer "who's in?" at a glance, then get out of the way. It should look like a tool an office would buy: quiet, dense where it helps, and free of decoration.
 
-- **One idea per page.** Now is a single number with context; Timeline is shape over a day; History is a matrix over weeks.
-- **Warm neutrals and one accent.** Off-white paper and deep teal by day, graphite and sea-glass by night. Teal is reserved for presence, so color always means "here".
+- **One idea per page.** Now is a single number with context; Timeline is shape over a day; History is a matrix over weeks; Audit is a ledger.
+- **Neutrals and one presence color.** Cool grays with deep teal by day, graphite by night. Presence has its own token, so color always means "here", whatever the theme.
+- **Five sober themes.** *Light* and *Dark* (or *System*, following the operating system); *Classic*, a Windows 2000 desktop application with bevelled panels, navy title bars and a tab strip; *Code*, a code editor's dark chrome with a blue status bar; and *High contrast*, black and white for low vision. No purple, no gradients for their own sake, no emoji.
+- **A status bar.** Like desktop software, the bottom edge says what WaveTrack is capturing, how many people are in, when the data was last updated and which version is running.
 - **Numbers that line up.** Times and durations use tabular figures; MAC addresses use a monospace face.
-- **Avatars without photos.** Initials on a hue derived from the name: distinct, stable and private.
+- **Avatars without photos.** Initials on one of eight hues (teal, blue, steel, green, cyan, amber, rust, olive) derived from the name: distinct, stable and private.
 - **Motion with a purpose.** A slow ripple on live indicators, a short rise on dialogs, both disabled under *Reduce Motion*.
 - **Explain at the point of doubt.** Nearby explains private addresses where they appear; the registration page says what is and isn't recorded before asking for consent.
 
@@ -97,9 +119,11 @@ The dashboard's job is to answer "who's in?" at a glance, then get out of the wa
 | --- | --- |
 | Tracker | arrivals, all-day presence, back-dated departures, weak signals, restarts, reassignment, concurrency |
 | Reports | midnight clipping, overlap merging, ongoing visits, daily totals, DST |
-| Store | migrations, uniqueness, anonymize and erase, invite races, expiry, retention |
-| Server | auth on every route, cookie flags, cross-site writes, JSON-only writes, CSP, forged registration headers, CSV formula injection |
+| Store | migrations, uniqueness, anonymize and erase, invite races, expiry, retention, long and open visits, audit paging and filters, purging, file permissions |
+| Server | auth on every route, cookie flags, cross-site writes, JSON-only writes, security headers, forged registration headers, CSV formula injection, rate limits, audit entries without personal data |
 | Capture | synthetic ARP, 802.11 and multicast packets, throttling |
 | Demo, importer | deterministic schedules, seeding, clock shift; pairing 2.x events |
 
-`go test -race ./...` runs everything; CI runs it on Linux and macOS and ends with the demo smoke test.
+| Config | defaults, validation, TLS pairs |
+
+`go test -race ./...` runs everything; CI runs it on Linux, macOS and Windows, adds `staticcheck`, `govulncheck` and one pass of every benchmark, and ends with an end-to-end check against the demo: sign-in, the API, the audit log and the sign-in rate limit.

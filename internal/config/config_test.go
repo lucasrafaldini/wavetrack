@@ -51,3 +51,18 @@ func TestBadDurationIsReported(t *testing.T) {
 		t.Fatalf("err = %v", err)
 	}
 }
+
+func TestTLSNeedsBothFiles(t *testing.T) {
+	cfg := Default()
+	cfg.TLS.CertFile = "cert.pem"
+	if err := cfg.Validate(); err == nil || !strings.Contains(err.Error(), "tls") {
+		t.Fatalf("cert without key = %v", err)
+	}
+	cfg.TLS.KeyFile = "key.pem"
+	if err := cfg.Validate(); err != nil || !cfg.TLS.Enabled() {
+		t.Fatalf("both files = %v, enabled %v", err, cfg.TLS.Enabled())
+	}
+	if Default().Privacy.AuditRetentionDays != 730 {
+		t.Fatal("audit log retention should default to two years")
+	}
+}
